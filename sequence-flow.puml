@@ -1,0 +1,70 @@
+@startuml
+title Product Checkout with Sandbox
+
+actor Customer
+participant Frontend
+participant Backend
+database DB
+participant Sandbox
+
+Customer -> Frontend: View product
+Frontend -> Backend: GET /products/current
+Backend -> DB: Fetch active product
+DB --> Backend: Product + stock
+Backend --> Frontend: Product + stock
+Frontend --> Customer: Display product
+
+Customer -> Frontend: Enter card and delivery details
+Frontend -> Backend: GET /checkout/config
+Backend -> Sandbox: Get acceptance tokens
+Sandbox --> Backend: Tokens + legal info
+Backend --> Frontend: publicKey + acceptance tokens
+
+Frontend -> Sandbox: Tokenize card
+Sandbox --> Frontend: paymentMethodToken
+
+Customer -> Frontend: Confirm purchase
+Frontend -> Backend: POST /transactions\n(customer, delivery, productId)
+Backend -> DB: Validate product and stock
+DB --> Backend: Product available
+Backend -> DB: Create Customer, Delivery,\nTransaction(PENDING)
+DB --> Backend: transactionId
+Backend --> Frontend: transactionId + summary
+
+Frontend -> Backend: POST /transactions/:id/process-payment\n(paymentMethodToken, acceptanceToken, customerEmail)
+Backend -> DB: Reload transaction and product
+DB --> Backend: Transaction(PENDING) + stock
+
+Backend -> Sandbox: Create payment transaction
+Sandbox --> Backend: Payment result
+
+alt Payment approved
+  Backend -> DB: Update Transaction(APPROVED)
+  Backend -> DB: Decrease stock by 1
+  DB --> Backend: OK
+  Backend --> Frontend: status=APPROVED
+  Frontend --> Customer: Show success
+else Payment declined
+  Backend -> DB: Update Transaction(DECLINED)
+  DB --> Backend: OK
+  Backend --> Frontend: status=DECLINED
+  Frontend --> Customer: Show decline
+else Technical error
+  Backend -> DB: Update Transaction(ERROR)
+  DB --> Backend: OK
+  Backend --> Frontend: status=ERROR
+  Frontend --> Customer: Show error
+end
+
+Frontend -> Backend: GET /transactions/:id
+Backend -> DB: Fetch final status
+DB --> Backend: Status + summary
+Backend --> Frontend: Final status
+
+Frontend -> Backend: GET /products/current
+Backend -> DB: Fetch updated product
+DB --> Backend: Product + updated stock
+Backend --> Frontend: Updated product
+Frontend --> Customer: Display updated product
+
+@enduml
