@@ -1,7 +1,7 @@
 import {
   Transaction as PrismaTransaction,
   TransactionStatus as PrismaTransactionStatus,
-} from '../../../../../generated/prisma/client';
+} from '../../../../../generated/prisma/client.js';
 import { Transaction } from '../../../../domain/entities/transaction.entity';
 import { TransactionStatus } from '../../../../domain/enums/transaction-status.enum';
 

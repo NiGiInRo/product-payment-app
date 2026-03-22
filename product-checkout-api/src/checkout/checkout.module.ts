@@ -7,6 +7,8 @@ import { DELIVERY_REPOSITORY } from './application/ports/delivery.repository';
 import { TRANSACTION_REPOSITORY } from './application/ports/transaction.repository';
 import { CreatePendingTransactionUseCase } from './application/use-cases/create-pending-transaction.use-case';
 import { GetCheckoutConfigUseCase } from './application/use-cases/get-checkout-config.use-case';
+import { GetTransactionStatusUseCase } from './application/use-cases/get-transaction-status.use-case';
+import { ProcessTransactionPaymentUseCase } from './application/use-cases/process-transaction-payment.use-case';
 import { CheckoutController } from './controllers/checkout.controller';
 import { TransactionsController } from './controllers/transactions.controller';
 import { EnvironmentCheckoutPricingProvider } from './infrastructure/providers/environment-checkout-pricing.provider';
@@ -22,6 +24,8 @@ import { PaymentsModule } from '../payments/payments.module';
   providers: [
     GetCheckoutConfigUseCase,
     CreatePendingTransactionUseCase,
+    GetTransactionStatusUseCase,
+    ProcessTransactionPaymentUseCase,
     EnvironmentCheckoutSettingsProvider,
     EnvironmentCheckoutPricingProvider,
     PrismaCustomerRepository,

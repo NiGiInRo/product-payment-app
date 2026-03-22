@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared/infrastructure/persistence/prisma/prisma.service';
-import { TransactionRepository } from '../../../application/ports/transaction.repository';
+import {
+  TransactionDetails,
+  TransactionRepository,
+} from '../../../application/ports/transaction.repository';
 import { Transaction } from '../../../domain/entities/transaction.entity';
 import { TransactionPrismaMapper } from './mappers/transaction-prisma.mapper';
+import { ProductPrismaMapper } from '../../../../catalog/infrastructure/persistence/prisma/mappers/product-prisma.mapper';
+import { CustomerPrismaMapper } from './mappers/customer-prisma.mapper';
+import { DeliveryPrismaMapper } from './mappers/delivery-prisma.mapper';
 
 @Injectable()
 export class PrismaTransactionRepository implements TransactionRepository {
@@ -14,6 +20,28 @@ export class PrismaTransactionRepository implements TransactionRepository {
     });
 
     return transaction ? TransactionPrismaMapper.toDomain(transaction) : null;
+  }
+
+  async findDetailsById(id: string): Promise<TransactionDetails | null> {
+    const transaction = await this.prismaService.transaction.findUnique({
+      where: { id },
+      include: {
+        product: true,
+        customer: true,
+        delivery: true,
+      },
+    });
+
+    if (!transaction) {
+      return null;
+    }
+
+    return {
+      ...TransactionPrismaMapper.toDomain(transaction),
+      product: ProductPrismaMapper.toDomain(transaction.product),
+      customer: CustomerPrismaMapper.toDomain(transaction.customer),
+      delivery: DeliveryPrismaMapper.toDomain(transaction.delivery),
+    };
   }
 
   async create(transaction: Transaction): Promise<Transaction> {

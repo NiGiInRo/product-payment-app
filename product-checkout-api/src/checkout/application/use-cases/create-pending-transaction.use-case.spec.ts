@@ -15,7 +15,7 @@ describe('CreatePendingTransactionUseCase', () => {
         id: '11111111-1111-4111-8111-111111111111',
         name: 'Auriculares',
         description: 'Producto activo',
-        priceCents: 129900,
+        priceCents: 12990000,
         stock: 10,
         imageUrl: 'https://example.com/product.jpg',
         active: true,
@@ -68,10 +68,10 @@ describe('CreatePendingTransactionUseCase', () => {
 
     expect(result.status).toBe('PENDING');
     expect(result.pricing).toEqual({
-      amountCents: 129900,
+      amountCents: 12990000,
       baseFeeCents: 5000,
       deliveryFeeCents: 10000,
-      totalCents: 144900,
+      totalCents: 13005000,
     });
     expect(customerRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -84,8 +84,8 @@ describe('CreatePendingTransactionUseCase', () => {
       expect.objectContaining({
         status: TransactionStatus.PENDING,
         currency: 'COP',
-        amountCents: 129900,
-        totalCents: 144900,
+        amountCents: 12990000,
+        totalCents: 13005000,
       }),
     );
   });
@@ -97,7 +97,7 @@ describe('CreatePendingTransactionUseCase', () => {
         id: 'product-1',
         name: 'Auriculares',
         description: 'Sin stock',
-        priceCents: 129900,
+        priceCents: 12990000,
         stock: 0,
         imageUrl: 'https://example.com/product.jpg',
         active: true,

@@ -1,4 +1,4 @@
-import { Delivery as PrismaDelivery } from '../../../../../generated/prisma/client';
+import { Delivery as PrismaDelivery } from '../../../../../generated/prisma/client.js';
 import { Delivery } from '../../../../domain/entities/delivery.entity';
 
 export class DeliveryPrismaMapper {

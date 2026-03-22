@@ -1,4 +1,4 @@
-import { Customer as PrismaCustomer } from '../../../../../generated/prisma/client';
+import { Customer as PrismaCustomer } from '../../../../../generated/prisma/client.js';
 import { Customer } from '../../../../domain/entities/customer.entity';
 
 export class CustomerPrismaMapper {

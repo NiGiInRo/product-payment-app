@@ -1,4 +1,4 @@
-import { Product as PrismaProduct } from '../../../../../generated/prisma/client';
+import { Product as PrismaProduct } from '../../../../../generated/prisma/client.js';
 import { Product } from '../../../../domain/entities/product.entity';
 
 export class ProductPrismaMapper {
