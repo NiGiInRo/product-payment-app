@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CheckoutSettingsProvider } from '../../application/ports/checkout-settings.provider';
-import { WompiMerchantConfigError } from '../../../payments/domain/errors/wompi-merchant-config.error';
+import { MerchantConfigError } from '../../../payments/domain/errors/merchant-config.error';
 
 @Injectable()
 export class EnvironmentCheckoutSettingsProvider
@@ -9,12 +9,14 @@ export class EnvironmentCheckoutSettingsProvider
 {
   constructor(private readonly configService: ConfigService) {}
 
-  getWompiPublicKey(): string {
-    const publicKey = this.configService.get<string>('WOMPI_PUBLIC_KEY');
+  getPublicKey(): string {
+    const publicKey =
+      this.configService.get<string>('PAYMENT_PROVIDER_PUBLIC_KEY') ??
+      this.configService.get<string>('WOMPI_PUBLIC_KEY');
 
     if (!publicKey || publicKey.includes('placeholder')) {
-      throw new WompiMerchantConfigError(
-        'WOMPI_PUBLIC_KEY is not configured with a real sandbox or production key.',
+      throw new MerchantConfigError(
+        'PAYMENT_PROVIDER_PUBLIC_KEY is not configured with a real sandbox or production key.',
       );
     }
 

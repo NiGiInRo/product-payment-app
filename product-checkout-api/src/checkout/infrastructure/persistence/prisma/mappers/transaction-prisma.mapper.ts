@@ -18,7 +18,7 @@ export class TransactionPrismaMapper {
       deliveryFeeCents: prismaTransaction.deliveryFeeCents,
       totalCents: prismaTransaction.totalCents,
       currency: prismaTransaction.currency,
-      wompiTransactionId: prismaTransaction.wompiTransactionId,
+      providerTransactionId: prismaTransaction.providerTransactionId,
       statusReason: prismaTransaction.statusReason,
       processedAt: prismaTransaction.processedAt,
       createdAt: prismaTransaction.createdAt,

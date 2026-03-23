@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   MerchantAcceptanceTokens,
-  WompiMerchantGateway,
-} from '../../application/ports/wompi-merchant.gateway';
-import { WompiMerchantConfigError } from '../../domain/errors/wompi-merchant-config.error';
+  MerchantGateway,
+} from '../../application/ports/merchant.gateway';
+import { MerchantConfigError } from '../../domain/errors/merchant-config.error';
 
-interface WompiMerchantResponse {
+interface ProviderMerchantResponse {
   data?: {
     presigned_acceptance?: {
       acceptance_token?: string;
@@ -20,17 +20,19 @@ interface WompiMerchantResponse {
 }
 
 @Injectable()
-export class WompiMerchantHttpGateway implements WompiMerchantGateway {
+export class ProviderMerchantHttpGateway implements MerchantGateway {
   constructor(private readonly configService: ConfigService) {}
 
   async getMerchantAcceptanceTokens(
     merchantPublicKey: string,
   ): Promise<MerchantAcceptanceTokens> {
-    const apiUrl = this.configService.get<string>('WOMPI_API_URL');
+    const apiUrl =
+      this.configService.get<string>('PAYMENT_PROVIDER_API_URL') ??
+      this.configService.get<string>('WOMPI_API_URL');
 
     if (!apiUrl) {
-      throw new WompiMerchantConfigError(
-        'WOMPI_API_URL is not configured for merchant token retrieval.',
+      throw new MerchantConfigError(
+        'PAYMENT_PROVIDER_API_URL is not configured for merchant token retrieval.',
       );
     }
 
@@ -39,17 +41,17 @@ export class WompiMerchantHttpGateway implements WompiMerchantGateway {
     );
 
     if (!response.ok) {
-      throw new WompiMerchantConfigError(
-        `Wompi merchant lookup failed with status ${response.status}.`,
+      throw new MerchantConfigError(
+        `Payment provider merchant lookup failed with status ${response.status}.`,
       );
     }
 
-    const payload = (await response.json()) as WompiMerchantResponse;
+    const payload = (await response.json()) as ProviderMerchantResponse;
     const acceptance = payload.data?.presigned_acceptance;
 
     if (!acceptance?.acceptance_token || !acceptance.permalink) {
-      throw new WompiMerchantConfigError(
-        'Wompi merchant response did not include a valid acceptance token.',
+      throw new MerchantConfigError(
+        'Payment provider merchant response did not include a valid acceptance token.',
       );
     }
 

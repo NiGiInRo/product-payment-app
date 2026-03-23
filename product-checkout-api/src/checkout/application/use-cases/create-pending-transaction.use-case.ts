@@ -7,10 +7,6 @@ import {
   CHECKOUT_PRICING_PROVIDER,
   type CheckoutPricingProvider,
 } from '../ports/checkout-pricing.provider';
-import { CUSTOMER_REPOSITORY } from '../ports/customer.repository';
-import type { CustomerRepository } from '../ports/customer.repository';
-import { DELIVERY_REPOSITORY } from '../ports/delivery.repository';
-import type { DeliveryRepository } from '../ports/delivery.repository';
 import { TRANSACTION_REPOSITORY } from '../ports/transaction.repository';
 import type { TransactionRepository } from '../ports/transaction.repository';
 import { CreatePendingTransactionCommand } from '../dto/create-pending-transaction.command';
@@ -26,10 +22,6 @@ export class CreatePendingTransactionUseCase {
   constructor(
     @Inject(PRODUCT_REPOSITORY)
     private readonly productRepository: ProductRepository,
-    @Inject(CUSTOMER_REPOSITORY)
-    private readonly customerRepository: CustomerRepository,
-    @Inject(DELIVERY_REPOSITORY)
-    private readonly deliveryRepository: DeliveryRepository,
     @Inject(TRANSACTION_REPOSITORY)
     private readonly transactionRepository: TransactionRepository,
     @Inject(CHECKOUT_PRICING_PROVIDER)
@@ -62,14 +54,14 @@ export class CreatePendingTransactionUseCase {
     const totalCents =
       amountCents + pricing.baseFeeCents + pricing.deliveryFeeCents;
 
-    const customer = await this.customerRepository.create({
+    const customer = {
       id: randomUUID(),
       fullName: command.customer.fullName.trim(),
       email: command.customer.email.trim().toLowerCase(),
       phone: command.customer.phone.trim(),
-    });
+    };
 
-    const delivery = await this.deliveryRepository.create({
+    const delivery = {
       id: randomUUID(),
       addressLine1: command.delivery.addressLine1.trim(),
       addressLine2: command.delivery.addressLine2?.trim() || null,
@@ -78,24 +70,28 @@ export class CreatePendingTransactionUseCase {
       postalCode: command.delivery.postalCode?.trim() || null,
       country: command.delivery.country.trim(),
       notes: command.delivery.notes?.trim() || null,
-    });
+    };
 
-    const transaction = await this.transactionRepository.create({
-      id: randomUUID(),
-      status: TransactionStatus.PENDING,
-      productId: product.id,
-      customerId: customer.id,
-      deliveryId: delivery.id,
-      amountCents,
-      baseFeeCents: pricing.baseFeeCents,
-      deliveryFeeCents: pricing.deliveryFeeCents,
-      totalCents,
-      currency: 'COP',
-      wompiTransactionId: null,
-      statusReason: null,
-      processedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const transaction = await this.transactionRepository.createPendingBundle({
+      customer,
+      delivery,
+      transaction: {
+        id: randomUUID(),
+        status: TransactionStatus.PENDING,
+        productId: product.id,
+        customerId: customer.id,
+        deliveryId: delivery.id,
+        amountCents,
+        baseFeeCents: pricing.baseFeeCents,
+        deliveryFeeCents: pricing.deliveryFeeCents,
+        totalCents,
+        currency: 'COP',
+        providerTransactionId: null,
+        statusReason: null,
+        processedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     });
 
     this.logger.log(

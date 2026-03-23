@@ -11,9 +11,26 @@ export interface TransactionDetails extends Transaction {
   delivery: Delivery;
 }
 
+export interface CreatePendingTransactionBundleInput {
+  customer: Customer;
+  delivery: Delivery;
+  transaction: Transaction;
+}
+
+export interface SaveApprovedTransactionInput {
+  transaction: Transaction;
+  productId: string;
+}
+
 export interface TransactionRepository {
   findById(id: string): Promise<Transaction | null>;
   findDetailsById(id: string): Promise<TransactionDetails | null>;
   create(transaction: Transaction): Promise<Transaction>;
+  createPendingBundle(
+    input: CreatePendingTransactionBundleInput,
+  ): Promise<Transaction>;
   save(transaction: Transaction): Promise<Transaction>;
+  saveApprovedWithStockDecrement(
+    input: SaveApprovedTransactionInput,
+  ): Promise<Transaction>;
 }

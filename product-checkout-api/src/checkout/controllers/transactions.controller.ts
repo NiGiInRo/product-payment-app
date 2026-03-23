@@ -7,10 +7,12 @@ import {
   HttpCode,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
 import {
   ApiBadGatewayResponse,
+  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiOperation,
@@ -77,11 +79,14 @@ export class TransactionsController {
     description: 'Returns the transaction status and data for refresh recovery.',
     type: GetTransactionStatusHttpResponse,
   })
+  @ApiBadRequestResponse({
+    description: 'The transaction id must be a valid UUID.',
+  })
   @ApiNotFoundResponse({
     description: 'The transaction does not exist.',
   })
   async getById(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<GetTransactionStatusHttpResponse> {
     try {
       return await this.getTransactionStatusUseCase.execute(id);
@@ -100,6 +105,9 @@ export class TransactionsController {
     description: 'Processes a pending transaction with the payment provider and returns the final local status.',
     type: GetTransactionStatusHttpResponse,
   })
+  @ApiBadRequestResponse({
+    description: 'The transaction id must be a valid UUID.',
+  })
   @ApiNotFoundResponse({
     description: 'The transaction does not exist.',
   })
@@ -112,7 +120,7 @@ export class TransactionsController {
   })
   @HttpCode(200)
   async processPayment(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() body: ProcessTransactionPaymentRequest,
   ): Promise<GetTransactionStatusHttpResponse> {
     try {

@@ -56,7 +56,7 @@ model Transaction {
   deliveryFeeCents   Int
   totalCents         Int
   currency           String            @default("COP")
-  wompiTransactionId String?
+  providerTransactionId String?        @map("wompiTransactionId")
   statusReason       String?
   processedAt        DateTime?
   createdAt          DateTime          @default(now())

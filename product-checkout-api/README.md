@@ -55,10 +55,10 @@ Define these variables in `.env`:
 PORT=3000
 FRONTEND_URL=http://localhost:5173
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/product_checkout
-WOMPI_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
-WOMPI_PUBLIC_KEY=pub_stagtest_replace_me
-WOMPI_PRIVATE_KEY=prv_stagtest_replace_me
-WOMPI_INTEGRITY_KEY=stagtest_integrity_replace_me
+PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+PAYMENT_PROVIDER_PUBLIC_KEY=pub_stagtest_replace_me
+PAYMENT_PROVIDER_PRIVATE_KEY=prv_stagtest_replace_me
+PAYMENT_PROVIDER_INTEGRITY_KEY=stagtest_integrity_replace_me
 BASE_FEE_CENTS=0
 DELIVERY_FEE_CENTS=0
 ```
@@ -116,7 +116,7 @@ API documentation is available at:
 
 1. `GET /checkout/config`
 2. `POST /transactions`
-3. tokenize a card with `POST {WOMPI_API_URL}/tokens/cards`
+3. tokenize a card with `POST {PAYMENT_PROVIDER_API_URL}/tokens/cards`
 4. `POST /transactions/:id/process-payment`
 5. `GET /transactions/:id`
 

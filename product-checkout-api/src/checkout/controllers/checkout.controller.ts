@@ -11,7 +11,7 @@ import {
 } from '@nestjs/swagger';
 import { GetCheckoutConfigUseCase } from '../application/use-cases/get-checkout-config.use-case';
 import { CheckoutConfigHttpResponse } from './dto/checkout-config.http-response';
-import { WompiMerchantConfigError } from '../../payments/domain/errors/wompi-merchant-config.error';
+import { MerchantConfigError } from '../../payments/domain/errors/merchant-config.error';
 
 @ApiTags('checkout')
 @Controller('checkout')
@@ -33,7 +33,7 @@ export class CheckoutController {
     try {
       return await this.getCheckoutConfigUseCase.execute();
     } catch (error: unknown) {
-      if (error instanceof WompiMerchantConfigError) {
+      if (error instanceof MerchantConfigError) {
         throw new BadGatewayException(error.message);
       }
 

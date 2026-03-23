@@ -1,7 +1,5 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { PRODUCT_REPOSITORY } from '../../../catalog/application/ports/product.repository';
-import type { ProductRepository } from '../../../catalog/application/ports/product.repository';
 import { ProductInactiveError } from '../../../catalog/domain/errors/product-inactive.error';
 import { PAYMENT_GATEWAY, type PaymentGateway } from '../../../payments/application/ports/payment.gateway';
 import {
@@ -26,8 +24,6 @@ export class ProcessTransactionPaymentUseCase {
   constructor(
     @Inject(TRANSACTION_REPOSITORY)
     private readonly transactionRepository: TransactionRepository,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepository: ProductRepository,
     @Inject(PAYMENT_GATEWAY)
     private readonly paymentGateway: PaymentGateway,
     @Inject(PAYMENT_CONFIG_PROVIDER)
@@ -70,31 +66,35 @@ export class ProcessTransactionPaymentUseCase {
       command,
     );
 
-    const updatedTransaction = await this.transactionRepository.save({
+    const nextTransactionState = {
       ...transaction,
       status: paymentResult.status,
-      wompiTransactionId: paymentResult.wompiTransactionId ?? null,
+      providerTransactionId: paymentResult.providerTransactionId ?? null,
       statusReason: paymentResult.statusReason ?? null,
       processedAt: paymentResult.processedAt,
-    });
+    };
+
+    const updatedTransaction =
+      paymentResult.status === TransactionStatus.APPROVED
+        ? await this.transactionRepository.saveApprovedWithStockDecrement({
+            transaction: nextTransactionState,
+            productId: transaction.product.id,
+          })
+        : await this.transactionRepository.save(nextTransactionState);
 
     this.logger.log(
       `Transaction ${updatedTransaction.id} finished with status ${updatedTransaction.status}.`,
     );
 
-    if (updatedTransaction.status === TransactionStatus.APPROVED) {
-      await this.productRepository.save({
-        ...transaction.product,
-        stock: transaction.product.stock - 1,
-      });
-
-      this.logger.log(
-        `Stock decreased for product ${transaction.product.id}. Remaining stock: ${transaction.product.stock - 1}.`,
-      );
-    }
-
     return toTransactionStatusResponse({
       ...transaction,
+      product: {
+        ...transaction.product,
+        stock:
+          updatedTransaction.status === TransactionStatus.APPROVED
+            ? transaction.product.stock - 1
+            : transaction.product.stock,
+      },
       ...updatedTransaction,
     });
   }
@@ -154,7 +154,7 @@ export class ProcessTransactionPaymentUseCase {
     amountCents: number,
     currency: string,
   ): string {
-    const integrityKey = this.paymentConfigProvider.getWompiIntegrityKey();
+    const integrityKey = this.paymentConfigProvider.getIntegrityKey();
     const reference = this.buildReference(transactionId);
 
     return createHash('sha256')

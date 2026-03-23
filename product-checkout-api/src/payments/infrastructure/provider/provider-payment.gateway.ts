@@ -12,7 +12,7 @@ import {
 import { TransactionStatus } from '../../../checkout/domain/enums/transaction-status.enum';
 import { PaymentProcessingError } from '../../domain/errors/payment-processing.error';
 
-interface WompiTransactionErrorPayload {
+interface ProviderTransactionErrorPayload {
   error?: {
     reason?: string;
     type?: string;
@@ -20,26 +20,26 @@ interface WompiTransactionErrorPayload {
   };
 }
 
-interface WompiTransactionData {
+interface ProviderTransactionData {
   id?: string;
   status?: string;
   status_message?: string;
   finalized_at?: string | null;
 }
 
-interface WompiTransactionPayload extends WompiTransactionErrorPayload {
-  data?: WompiTransactionData;
+interface ProviderTransactionPayload extends ProviderTransactionErrorPayload {
+  data?: ProviderTransactionData;
 }
 
 @Injectable()
-export class WompiPaymentGateway implements PaymentGateway {
+export class ProviderPaymentGateway implements PaymentGateway {
   private static readonly TERMINAL_STATUSES = new Set([
     'APPROVED',
     'DECLINED',
     'ERROR',
     'VOIDED',
   ]);
-  private readonly logger = new Logger(WompiPaymentGateway.name);
+  private readonly logger = new Logger(ProviderPaymentGateway.name);
 
   constructor(
     @Inject(PAYMENT_CONFIG_PROVIDER)
@@ -49,11 +49,11 @@ export class WompiPaymentGateway implements PaymentGateway {
   async processCardPayment(
     input: ProcessCardPaymentInput,
   ): Promise<ProcessCardPaymentResult> {
-    const apiUrl = this.paymentConfigProvider.getWompiApiUrl();
-    const privateKey = this.paymentConfigProvider.getWompiPrivateKey();
+    const apiUrl = this.paymentConfigProvider.getApiUrl();
+    const privateKey = this.paymentConfigProvider.getPrivateKey();
 
     this.logger.log(
-      `Creating Wompi transaction for local transaction ${input.transactionId} and reference ${input.reference}.`,
+      `Creating provider transaction for local transaction ${input.transactionId} and reference ${input.reference}.`,
     );
 
     const createResponse = await fetch(`${apiUrl}/transactions`, {
@@ -80,52 +80,52 @@ export class WompiPaymentGateway implements PaymentGateway {
     });
 
     const createdPayload =
-      (await createResponse.json()) as WompiTransactionPayload;
+      (await createResponse.json()) as ProviderTransactionPayload;
 
     if (!createResponse.ok) {
       const message = this.extractErrorMessage(
         createdPayload,
-        `Wompi payment creation failed with status ${createResponse.status}.`,
+        `Payment provider creation failed with status ${createResponse.status}.`,
       );
       this.logger.warn(
-        `Wompi rejected transaction ${input.transactionId} during creation: ${message}`,
+        `Payment provider rejected transaction ${input.transactionId} during creation: ${message}`,
       );
       throw new PaymentProcessingError(message);
     }
 
-    const wompiTransactionId = createdPayload.data?.id;
+    const providerTransactionId = createdPayload.data?.id;
 
-    if (!wompiTransactionId) {
+    if (!providerTransactionId) {
       throw new PaymentProcessingError(
-        'Wompi did not return a transaction id for the processed payment.',
+        'Payment provider did not return a transaction id for the processed payment.',
       );
     }
 
     this.logger.log(
-      `Wompi transaction ${wompiTransactionId} created for local transaction ${input.transactionId}.`,
+      `Provider transaction ${providerTransactionId} created for local transaction ${input.transactionId}.`,
     );
 
     const finalTransaction = await this.pollFinalTransactionStatus(
-      wompiTransactionId,
+      providerTransactionId,
       createdPayload.data,
     );
 
     return {
       status: this.toLocalStatus(finalTransaction.status),
-      wompiTransactionId,
+      providerTransactionId,
       statusReason:
         finalTransaction.status_message ??
-        'Wompi returned a final payment status without a message.',
+        'Payment provider returned a final payment status without a message.',
       processedAt: this.toProcessedAt(finalTransaction.finalized_at),
     };
   }
 
   private async pollFinalTransactionStatus(
-    wompiTransactionId: string,
-    initialTransaction?: WompiTransactionData,
-  ): Promise<WompiTransactionData> {
-    const apiUrl = this.paymentConfigProvider.getWompiApiUrl();
-    const publicKey = this.paymentConfigProvider.getWompiPublicKey();
+    providerTransactionId: string,
+    initialTransaction?: ProviderTransactionData,
+  ): Promise<ProviderTransactionData> {
+    const apiUrl = this.paymentConfigProvider.getApiUrl();
+    const publicKey = this.paymentConfigProvider.getPublicKey();
     let latestTransaction = initialTransaction;
 
     if (latestTransaction?.status && this.isTerminalStatus(latestTransaction.status)) {
@@ -133,21 +133,21 @@ export class WompiPaymentGateway implements PaymentGateway {
     }
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      const response = await fetch(`${apiUrl}/transactions/${wompiTransactionId}`, {
+      const response = await fetch(`${apiUrl}/transactions/${providerTransactionId}`, {
         headers: {
           Authorization: `Bearer ${publicKey}`,
         },
       });
 
-      const payload = (await response.json()) as WompiTransactionPayload;
+      const payload = (await response.json()) as ProviderTransactionPayload;
 
       if (!response.ok) {
         const message = this.extractErrorMessage(
           payload,
-          `Wompi transaction lookup failed with status ${response.status}.`,
+          `Payment provider transaction lookup failed with status ${response.status}.`,
         );
         this.logger.warn(
-          `Wompi lookup failed for transaction ${wompiTransactionId}: ${message}`,
+          `Payment provider lookup failed for transaction ${providerTransactionId}: ${message}`,
         );
         throw new PaymentProcessingError(message);
       }
@@ -156,13 +156,13 @@ export class WompiPaymentGateway implements PaymentGateway {
 
       if (!latestTransaction?.status) {
         throw new PaymentProcessingError(
-          'Wompi transaction lookup did not return a valid payment status.',
+          'Payment provider transaction lookup did not return a valid payment status.',
         );
       }
 
       if (this.isTerminalStatus(latestTransaction.status)) {
         this.logger.log(
-          `Wompi transaction ${wompiTransactionId} reached terminal status ${latestTransaction.status}.`,
+          `Provider transaction ${providerTransactionId} reached terminal status ${latestTransaction.status}.`,
         );
         return latestTransaction;
       }
@@ -171,16 +171,16 @@ export class WompiPaymentGateway implements PaymentGateway {
     }
 
     return {
-      id: wompiTransactionId,
+      id: providerTransactionId,
       status: 'ERROR',
       status_message:
-        'Wompi transaction did not reach a terminal status within the polling window.',
+        'Payment provider transaction did not reach a terminal status within the polling window.',
       finalized_at: new Date().toISOString(),
     };
   }
 
   private isTerminalStatus(status: string): boolean {
-    return WompiPaymentGateway.TERMINAL_STATUSES.has(status);
+    return ProviderPaymentGateway.TERMINAL_STATUSES.has(status);
   }
 
   private toLocalStatus(status?: string): TransactionStatus {
@@ -195,7 +195,7 @@ export class WompiPaymentGateway implements PaymentGateway {
         return TransactionStatus.ERROR;
       default:
         throw new PaymentProcessingError(
-          `Wompi returned an unsupported final status: ${status ?? 'undefined'}.`,
+          `Payment provider returned an unsupported final status: ${status ?? 'undefined'}.`,
         );
     }
   }
@@ -215,7 +215,7 @@ export class WompiPaymentGateway implements PaymentGateway {
   }
 
   private extractErrorMessage(
-    payload: WompiTransactionErrorPayload,
+    payload: ProviderTransactionErrorPayload,
     fallback: string,
   ): string {
     const reason = payload.error?.reason;
@@ -225,7 +225,6 @@ export class WompiPaymentGateway implements PaymentGateway {
     }
 
     const messages = payload.error?.messages;
-
     const flattened = this.flattenMessages(messages);
 
     if (flattened.length > 0) {

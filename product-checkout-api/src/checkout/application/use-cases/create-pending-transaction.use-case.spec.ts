@@ -1,6 +1,4 @@
 import type { ProductRepository } from '../../../catalog/application/ports/product.repository';
-import type { CustomerRepository } from '../ports/customer.repository';
-import type { DeliveryRepository } from '../ports/delivery.repository';
 import type { TransactionRepository } from '../ports/transaction.repository';
 import type { CheckoutPricingProvider } from '../ports/checkout-pricing.provider';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
@@ -25,18 +23,15 @@ describe('CreatePendingTransactionUseCase', () => {
       save: jest.fn(),
     };
 
-    const customerRepository: CustomerRepository = {
-      create: jest.fn().mockImplementation(async (customer) => customer),
-    };
-
-    const deliveryRepository: DeliveryRepository = {
-      create: jest.fn().mockImplementation(async (delivery) => delivery),
-    };
-
     const transactionRepository: TransactionRepository = {
       findById: jest.fn(),
-      create: jest.fn().mockImplementation(async (transaction) => transaction),
+      findDetailsById: jest.fn(),
+      create: jest.fn(),
+      createPendingBundle: jest
+        .fn()
+        .mockImplementation(async ({ transaction }) => transaction),
       save: jest.fn(),
+      saveApprovedWithStockDecrement: jest.fn(),
     };
 
     const checkoutPricingProvider: CheckoutPricingProvider = {
@@ -48,8 +43,6 @@ describe('CreatePendingTransactionUseCase', () => {
 
     const useCase = new CreatePendingTransactionUseCase(
       productRepository,
-      customerRepository,
-      deliveryRepository,
       transactionRepository,
       checkoutPricingProvider,
     );
@@ -63,7 +56,7 @@ describe('CreatePendingTransactionUseCase', () => {
       },
       delivery: {
         addressLine1: ' Calle 1 # 2 - 3 ',
-        city: ' Bogotá ',
+        city: ' BogotÃ¡ ',
         country: ' Colombia ',
       },
     });
@@ -75,19 +68,19 @@ describe('CreatePendingTransactionUseCase', () => {
       deliveryFeeCents: 10000,
       totalCents: 13005000,
     });
-    expect(customerRepository.create).toHaveBeenCalledWith(
+    expect(transactionRepository.createPendingBundle).toHaveBeenCalledWith(
       expect.objectContaining({
-        fullName: 'Nicolas Infante',
-        email: 'nicolas@example.com',
-        phone: '3001234567',
-      }),
-    );
-    expect(transactionRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: TransactionStatus.PENDING,
-        currency: 'COP',
-        amountCents: 12990000,
-        totalCents: 13005000,
+        customer: expect.objectContaining({
+          fullName: 'Nicolas Infante',
+          email: 'nicolas@example.com',
+          phone: '3001234567',
+        }),
+        transaction: expect.objectContaining({
+          status: TransactionStatus.PENDING,
+          currency: 'COP',
+          amountCents: 12990000,
+          totalCents: 13005000,
+        }),
       }),
     );
   });
@@ -109,9 +102,14 @@ describe('CreatePendingTransactionUseCase', () => {
 
     const useCase = new CreatePendingTransactionUseCase(
       productRepository,
-      { create: jest.fn() },
-      { create: jest.fn() },
-      { findById: jest.fn(), create: jest.fn(), save: jest.fn() },
+      {
+        findById: jest.fn(),
+        findDetailsById: jest.fn(),
+        create: jest.fn(),
+        createPendingBundle: jest.fn(),
+        save: jest.fn(),
+        saveApprovedWithStockDecrement: jest.fn(),
+      },
       {
         getPricing: jest.fn().mockReturnValue({
           baseFeeCents: 0,
@@ -146,9 +144,14 @@ describe('CreatePendingTransactionUseCase', () => {
 
     const useCase = new CreatePendingTransactionUseCase(
       productRepository,
-      { create: jest.fn() },
-      { create: jest.fn() },
-      { findById: jest.fn(), findDetailsById: jest.fn(), create: jest.fn(), save: jest.fn() },
+      {
+        findById: jest.fn(),
+        findDetailsById: jest.fn(),
+        create: jest.fn(),
+        createPendingBundle: jest.fn(),
+        save: jest.fn(),
+        saveApprovedWithStockDecrement: jest.fn(),
+      },
       {
         getPricing: jest.fn().mockReturnValue({
           baseFeeCents: 0,
@@ -191,9 +194,14 @@ describe('CreatePendingTransactionUseCase', () => {
 
     const useCase = new CreatePendingTransactionUseCase(
       productRepository,
-      { create: jest.fn() },
-      { create: jest.fn() },
-      { findById: jest.fn(), findDetailsById: jest.fn(), create: jest.fn(), save: jest.fn() },
+      {
+        findById: jest.fn(),
+        findDetailsById: jest.fn(),
+        create: jest.fn(),
+        createPendingBundle: jest.fn(),
+        save: jest.fn(),
+        saveApprovedWithStockDecrement: jest.fn(),
+      },
       {
         getPricing: jest.fn().mockReturnValue({
           baseFeeCents: 0,

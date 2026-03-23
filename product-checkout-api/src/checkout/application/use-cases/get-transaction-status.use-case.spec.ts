@@ -18,7 +18,7 @@ describe('GetTransactionStatusUseCase', () => {
         deliveryFeeCents: 0,
         totalCents: 12990000,
         currency: 'COP',
-        wompiTransactionId: null,
+        providerTransactionId: null,
         statusReason: null,
         processedAt: null,
         createdAt: new Date('2026-03-22T00:00:00.000Z'),
@@ -50,7 +50,9 @@ describe('GetTransactionStatusUseCase', () => {
         },
       }),
       create: jest.fn(),
+      createPendingBundle: jest.fn(),
       save: jest.fn(),
+      saveApprovedWithStockDecrement: jest.fn(),
     };
 
     const useCase = new GetTransactionStatusUseCase(transactionRepository);
@@ -96,7 +98,9 @@ describe('GetTransactionStatusUseCase', () => {
       findById: jest.fn(),
       findDetailsById: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
+      createPendingBundle: jest.fn(),
       save: jest.fn(),
+      saveApprovedWithStockDecrement: jest.fn(),
     };
 
     const useCase = new GetTransactionStatusUseCase(transactionRepository);

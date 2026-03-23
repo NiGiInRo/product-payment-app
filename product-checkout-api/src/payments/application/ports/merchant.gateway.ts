@@ -1,4 +1,4 @@
-export const WOMPI_MERCHANT_GATEWAY = Symbol('WOMPI_MERCHANT_GATEWAY');
+export const MERCHANT_GATEWAY = Symbol('MERCHANT_GATEWAY');
 
 export interface MerchantAcceptanceTokens {
   acceptanceToken: string;
@@ -7,7 +7,7 @@ export interface MerchantAcceptanceTokens {
   personalDataAuthPermalink?: string;
 }
 
-export interface WompiMerchantGateway {
+export interface MerchantGateway {
   getMerchantAcceptanceTokens(
     merchantPublicKey: string,
   ): Promise<MerchantAcceptanceTokens>;

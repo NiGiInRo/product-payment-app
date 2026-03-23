@@ -5,23 +5,23 @@ import {
   type CheckoutSettingsProvider,
 } from '../ports/checkout-settings.provider';
 import {
-  WOMPI_MERCHANT_GATEWAY,
-  type WompiMerchantGateway,
-} from '../../../payments/application/ports/wompi-merchant.gateway';
+  MERCHANT_GATEWAY,
+  type MerchantGateway,
+} from '../../../payments/application/ports/merchant.gateway';
 
 @Injectable()
 export class GetCheckoutConfigUseCase {
   constructor(
     @Inject(CHECKOUT_SETTINGS_PROVIDER)
     private readonly checkoutSettingsProvider: CheckoutSettingsProvider,
-    @Inject(WOMPI_MERCHANT_GATEWAY)
-    private readonly wompiMerchantGateway: WompiMerchantGateway,
+    @Inject(MERCHANT_GATEWAY)
+    private readonly merchantGateway: MerchantGateway,
   ) {}
 
   async execute(): Promise<CheckoutConfigResponse> {
-    const publicKey = this.checkoutSettingsProvider.getWompiPublicKey();
+    const publicKey = this.checkoutSettingsProvider.getPublicKey();
     const merchantConfig =
-      await this.wompiMerchantGateway.getMerchantAcceptanceTokens(publicKey);
+      await this.merchantGateway.getMerchantAcceptanceTokens(publicKey);
 
     return {
       publicKey,

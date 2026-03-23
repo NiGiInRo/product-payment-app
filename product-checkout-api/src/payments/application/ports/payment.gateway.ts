@@ -16,7 +16,7 @@ export interface ProcessCardPaymentInput {
 
 export interface ProcessCardPaymentResult {
   status: TransactionStatus;
-  wompiTransactionId?: string | null;
+  providerTransactionId?: string | null;
   statusReason?: string | null;
   processedAt: Date;
 }

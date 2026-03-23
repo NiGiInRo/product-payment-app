@@ -7,36 +7,38 @@ import { PaymentProcessingError } from '../../domain/errors/payment-processing.e
 export class EnvironmentPaymentConfigProvider implements PaymentConfigProvider {
   constructor(private readonly configService: ConfigService) {}
 
-  getWompiApiUrl(): string {
+  getApiUrl(): string {
     return this.getRequiredValue(
-      'WOMPI_API_URL',
-      'WOMPI_API_URL is not configured for payment processing.',
+      ['PAYMENT_PROVIDER_API_URL', 'WOMPI_API_URL'],
+      'PAYMENT_PROVIDER_API_URL is not configured for payment processing.',
     );
   }
 
-  getWompiPublicKey(): string {
+  getPublicKey(): string {
     return this.getRequiredValue(
-      'WOMPI_PUBLIC_KEY',
-      'WOMPI_PUBLIC_KEY is not configured for payment processing.',
+      ['PAYMENT_PROVIDER_PUBLIC_KEY', 'WOMPI_PUBLIC_KEY'],
+      'PAYMENT_PROVIDER_PUBLIC_KEY is not configured for payment processing.',
     );
   }
 
-  getWompiPrivateKey(): string {
+  getPrivateKey(): string {
     return this.getRequiredValue(
-      'WOMPI_PRIVATE_KEY',
-      'WOMPI_PRIVATE_KEY is not configured for payment processing.',
+      ['PAYMENT_PROVIDER_PRIVATE_KEY', 'WOMPI_PRIVATE_KEY'],
+      'PAYMENT_PROVIDER_PRIVATE_KEY is not configured for payment processing.',
     );
   }
 
-  getWompiIntegrityKey(): string {
+  getIntegrityKey(): string {
     return this.getRequiredValue(
-      'WOMPI_INTEGRITY_KEY',
-      'WOMPI_INTEGRITY_KEY is not configured for payment processing.',
+      ['PAYMENT_PROVIDER_INTEGRITY_KEY', 'WOMPI_INTEGRITY_KEY'],
+      'PAYMENT_PROVIDER_INTEGRITY_KEY is not configured for payment processing.',
     );
   }
 
-  private getRequiredValue(key: string, message: string): string {
-    const value = this.configService.get<string>(key);
+  private getRequiredValue(keys: string[], message: string): string {
+    const value = keys
+      .map((key) => this.configService.get<string>(key))
+      .find((candidate) => candidate && candidate.trim().length > 0);
 
     if (!value || value.includes('placeholder')) {
       throw new PaymentProcessingError(message);

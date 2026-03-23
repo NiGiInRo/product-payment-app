@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import type { ProductRepository } from '../../../catalog/application/ports/product.repository';
 import {
   PaymentGateway,
   ProcessCardPaymentResult,
@@ -26,7 +25,7 @@ describe('ProcessTransactionPaymentUseCase', () => {
     deliveryFeeCents: 0,
     totalCents: 12990000,
     currency: 'COP',
-    wompiTransactionId: null,
+    providerTransactionId: null,
     statusReason: null,
     processedAt: null,
     createdAt: new Date('2026-03-22T00:00:00.000Z'),
@@ -61,24 +60,22 @@ describe('ProcessTransactionPaymentUseCase', () => {
   function buildDependencies(
     paymentResult?: ProcessCardPaymentResult,
   ): {
-    productRepository: ProductRepository;
     transactionRepository: TransactionRepository;
     paymentGateway: PaymentGateway;
     paymentConfigProvider: PaymentConfigProvider;
   } {
     return {
-      productRepository: {
-        findCurrentActive: jest.fn(),
-        findById: jest.fn(),
-        save: jest.fn().mockImplementation(async (product) => product),
-      },
       transactionRepository: {
         findById: jest.fn(),
         findDetailsById: jest
           .fn()
           .mockResolvedValue(structuredClone(baseTransaction)),
         create: jest.fn(),
+        createPendingBundle: jest.fn(),
         save: jest.fn().mockImplementation(async (transaction) => transaction),
+        saveApprovedWithStockDecrement: jest
+          .fn()
+          .mockImplementation(async ({ transaction }) => transaction),
       },
       paymentGateway: {
         processCardPayment: jest
@@ -86,33 +83,28 @@ describe('ProcessTransactionPaymentUseCase', () => {
           .mockResolvedValue(
             paymentResult ?? {
               status: TransactionStatus.APPROVED,
-              wompiTransactionId: 'wompi-transaction-1',
+              providerTransactionId: 'provider-transaction-1',
               statusReason: 'Transaction approved',
               processedAt: new Date('2026-03-22T12:00:00.000Z'),
             },
           ),
       },
       paymentConfigProvider: {
-        getWompiApiUrl: jest.fn(),
-        getWompiPublicKey: jest.fn(),
-        getWompiPrivateKey: jest.fn(),
-        getWompiIntegrityKey: jest.fn().mockReturnValue(
+        getApiUrl: jest.fn(),
+        getPublicKey: jest.fn(),
+        getPrivateKey: jest.fn(),
+        getIntegrityKey: jest.fn().mockReturnValue(
           'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp3',
         ),
       },
     };
   }
 
-  it('processes an approved payment, stores the final status and decreases stock', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+  it('processes an approved payment and stores the final status with the stock decrement atomically', async () => {
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -144,17 +136,14 @@ describe('ProcessTransactionPaymentUseCase', () => {
         signature: expectedSignature,
       }),
     );
-    expect(transactionRepository.save).toHaveBeenCalledWith(
+    expect(transactionRepository.saveApprovedWithStockDecrement).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: TransactionStatus.APPROVED,
-        wompiTransactionId: 'wompi-transaction-1',
-        statusReason: 'Transaction approved',
-      }),
-    );
-    expect(productRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'product-1',
-        stock: 9,
+        productId: 'product-1',
+        transaction: expect.objectContaining({
+          status: TransactionStatus.APPROVED,
+          providerTransactionId: 'provider-transaction-1',
+          statusReason: 'Transaction approved',
+        }),
       }),
     );
     expect(result.status).toBe(TransactionStatus.APPROVED);
@@ -165,19 +154,14 @@ describe('ProcessTransactionPaymentUseCase', () => {
   it('stores a declined payment without touching the stock', async () => {
     const paymentResult: ProcessCardPaymentResult = {
       status: TransactionStatus.DECLINED,
-      wompiTransactionId: 'wompi-declined',
+      providerTransactionId: 'provider-declined',
       statusReason: 'Card declined in sandbox',
       processedAt: new Date('2026-03-22T12:10:00.000Z'),
     };
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies(paymentResult);
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies(paymentResult);
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -190,22 +174,18 @@ describe('ProcessTransactionPaymentUseCase', () => {
     });
 
     expect(result.status).toBe(TransactionStatus.DECLINED);
-    expect(productRepository.save).not.toHaveBeenCalled();
+    expect(transactionRepository.saveApprovedWithStockDecrement).not.toHaveBeenCalled();
     expect(transactionRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         status: TransactionStatus.DECLINED,
-        wompiTransactionId: 'wompi-declined',
+        providerTransactionId: 'provider-declined',
       }),
     );
   });
 
   it('throws TransactionAlreadyProcessedError when the transaction is no longer pending', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     transactionRepository.findDetailsById = jest.fn().mockResolvedValue({
       ...structuredClone(baseTransaction),
       status: TransactionStatus.APPROVED,
@@ -213,7 +193,6 @@ describe('ProcessTransactionPaymentUseCase', () => {
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -229,17 +208,12 @@ describe('ProcessTransactionPaymentUseCase', () => {
   });
 
   it('throws TransactionNotFoundError when the transaction does not exist', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     transactionRepository.findDetailsById = jest.fn().mockResolvedValue(null);
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -255,12 +229,8 @@ describe('ProcessTransactionPaymentUseCase', () => {
   });
 
   it('throws ProductInactiveError when the product became inactive before processing', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     transactionRepository.findDetailsById = jest.fn().mockResolvedValue({
       ...structuredClone(baseTransaction),
       product: {
@@ -271,7 +241,6 @@ describe('ProcessTransactionPaymentUseCase', () => {
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -287,12 +256,8 @@ describe('ProcessTransactionPaymentUseCase', () => {
   });
 
   it('throws OutOfStockError when the product runs out of stock before processing', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     transactionRepository.findDetailsById = jest.fn().mockResolvedValue({
       ...structuredClone(baseTransaction),
       product: {
@@ -303,7 +268,6 @@ describe('ProcessTransactionPaymentUseCase', () => {
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -319,19 +283,14 @@ describe('ProcessTransactionPaymentUseCase', () => {
   });
 
   it('marks the transaction as ERROR when the gateway fails technically', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     paymentGateway.processCardPayment = jest
       .fn()
       .mockRejectedValue(new PaymentProcessingError('Sandbox outage'));
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );
@@ -351,23 +310,18 @@ describe('ProcessTransactionPaymentUseCase', () => {
         statusReason: 'Sandbox outage',
       }),
     );
-    expect(productRepository.save).not.toHaveBeenCalled();
+    expect(transactionRepository.saveApprovedWithStockDecrement).not.toHaveBeenCalled();
   });
 
   it('wraps non-Error gateway failures into PaymentProcessingError', async () => {
-    const {
-      productRepository,
-      transactionRepository,
-      paymentGateway,
-      paymentConfigProvider,
-    } = buildDependencies();
+    const { transactionRepository, paymentGateway, paymentConfigProvider } =
+      buildDependencies();
     paymentGateway.processCardPayment = jest.fn().mockRejectedValue({
       reason: 'gateway-object',
     });
 
     const useCase = new ProcessTransactionPaymentUseCase(
       transactionRepository,
-      productRepository,
       paymentGateway,
       paymentConfigProvider,
     );

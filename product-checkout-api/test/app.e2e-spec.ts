@@ -216,6 +216,10 @@ describe('AppController (e2e)', () => {
       .expect(404);
   });
 
+  it('/transactions/:id (GET) returns 400 for malformed UUIDs', () => {
+    return request(app.getHttpServer()).get('/transactions/not-a-uuid').expect(400);
+  });
+
   it('/transactions/:id/process-payment (POST) marks the transaction approved and decreases stock', async () => {
     const customerEmail = `approved-${Date.now()}@example.com`;
     const createdResponse = await request(app.getHttpServer())
@@ -247,7 +251,7 @@ describe('AppController (e2e)', () => {
       .spyOn(paymentGateway, 'processCardPayment')
       .mockResolvedValue({
         status: TransactionStatus.APPROVED,
-        wompiTransactionId: 'wompi-approved-1',
+        providerTransactionId: 'provider-approved-1',
         statusReason: 'Transaction approved',
         processedAt: new Date('2026-03-22T12:00:00.000Z'),
       });
@@ -273,7 +277,7 @@ describe('AppController (e2e)', () => {
       where: { id: transaction.id },
     });
     expect(persistedTransaction.status).toBe('APPROVED');
-    expect(persistedTransaction.wompiTransactionId).toBe('wompi-approved-1');
+    expect(persistedTransaction.providerTransactionId).toBe('provider-approved-1');
     expect(persistedTransaction.processedAt).not.toBeNull();
 
     const product = await prismaService.product.findUniqueOrThrow({
@@ -354,7 +358,7 @@ describe('AppController (e2e)', () => {
     });
     expect(persistedTransaction.status).toBe('ERROR');
     expect(persistedTransaction.statusReason).toContain('Sandbox outage');
-    expect(persistedTransaction.wompiTransactionId).toBeNull();
+    expect(persistedTransaction.providerTransactionId).toBeNull();
     expect(persistedTransaction.processedAt).not.toBeNull();
 
     const product = await prismaService.product.findUniqueOrThrow({
@@ -369,5 +373,16 @@ describe('AppController (e2e)', () => {
         expect(response.body.status).toBe('ERROR');
         expect(response.body.statusReason).toContain('Sandbox outage');
       });
+  });
+
+  it('/transactions/:id/process-payment (POST) returns 400 for malformed UUIDs', () => {
+    return request(app.getHttpServer())
+      .post('/transactions/not-a-uuid/process-payment')
+      .send({
+        paymentMethodToken: 'tok_test_invalid',
+        acceptanceToken: 'acceptance-token',
+        customerEmail: 'invalid@example.com',
+      })
+      .expect(400);
   });
 });

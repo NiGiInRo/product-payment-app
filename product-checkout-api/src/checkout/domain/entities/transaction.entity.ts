@@ -11,7 +11,7 @@ export interface Transaction {
   deliveryFeeCents: number;
   totalCents: number;
   currency: string;
-  wompiTransactionId?: string | null;
+  providerTransactionId?: string | null;
   statusReason?: string | null;
   processedAt?: Date | null;
   createdAt: Date;
