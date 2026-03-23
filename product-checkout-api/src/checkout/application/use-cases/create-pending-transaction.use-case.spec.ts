@@ -6,6 +6,8 @@ import type { CheckoutPricingProvider } from '../ports/checkout-pricing.provider
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 import { OutOfStockError } from '../../domain/errors/out-of-stock.error';
 import { CreatePendingTransactionUseCase } from './create-pending-transaction.use-case';
+import { ProductNotFoundError } from '../../../catalog/domain/errors/product-not-found.error';
+import { ProductInactiveError } from '../../../catalog/domain/errors/product-inactive.error';
 
 describe('CreatePendingTransactionUseCase', () => {
   it('creates a pending transaction with pricing frozen by the backend', async () => {
@@ -133,5 +135,87 @@ describe('CreatePendingTransactionUseCase', () => {
         },
       }),
     ).rejects.toBeInstanceOf(OutOfStockError);
+  });
+
+  it('throws ProductNotFoundError when the product does not exist', async () => {
+    const productRepository: ProductRepository = {
+      findCurrentActive: jest.fn(),
+      findById: jest.fn().mockResolvedValue(null),
+      save: jest.fn(),
+    };
+
+    const useCase = new CreatePendingTransactionUseCase(
+      productRepository,
+      { create: jest.fn() },
+      { create: jest.fn() },
+      { findById: jest.fn(), findDetailsById: jest.fn(), create: jest.fn(), save: jest.fn() },
+      {
+        getPricing: jest.fn().mockReturnValue({
+          baseFeeCents: 0,
+          deliveryFeeCents: 0,
+        }),
+      },
+    );
+
+    await expect(
+      useCase.execute({
+        productId: 'missing-product',
+        customer: {
+          fullName: 'Jane Doe',
+          email: 'jane@example.com',
+          phone: '3001234567',
+        },
+        delivery: {
+          addressLine1: 'Street 123',
+          city: 'Bogota',
+          country: 'Colombia',
+        },
+      }),
+    ).rejects.toBeInstanceOf(ProductNotFoundError);
+  });
+
+  it('throws ProductInactiveError when the product is not active', async () => {
+    const productRepository: ProductRepository = {
+      findCurrentActive: jest.fn(),
+      findById: jest.fn().mockResolvedValue({
+        id: 'inactive-product',
+        name: 'Auriculares',
+        description: 'Producto inactivo',
+        priceCents: 12990000,
+        stock: 10,
+        imageUrl: 'https://example.com/product.jpg',
+        active: false,
+      }),
+      save: jest.fn(),
+    };
+
+    const useCase = new CreatePendingTransactionUseCase(
+      productRepository,
+      { create: jest.fn() },
+      { create: jest.fn() },
+      { findById: jest.fn(), findDetailsById: jest.fn(), create: jest.fn(), save: jest.fn() },
+      {
+        getPricing: jest.fn().mockReturnValue({
+          baseFeeCents: 0,
+          deliveryFeeCents: 0,
+        }),
+      },
+    );
+
+    await expect(
+      useCase.execute({
+        productId: 'inactive-product',
+        customer: {
+          fullName: 'Jane Doe',
+          email: 'jane@example.com',
+          phone: '3001234567',
+        },
+        delivery: {
+          addressLine1: 'Street 123',
+          city: 'Bogota',
+          country: 'Colombia',
+        },
+      }),
+    ).rejects.toBeInstanceOf(ProductInactiveError);
   });
 });

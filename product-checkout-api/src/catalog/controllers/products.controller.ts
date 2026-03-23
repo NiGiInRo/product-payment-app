@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ApiOperation,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
@@ -20,6 +21,7 @@ export class ProductsController {
   ) {}
 
   @Get('current')
+  @ApiOperation({ summary: 'Get the current active product for the checkout.' })
   @ApiOkResponse({
     description: 'Returns the current active product and its stock.',
     type: CurrentProductHttpResponse,

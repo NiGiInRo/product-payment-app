@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
   PAYMENT_CONFIG_PROVIDER,
@@ -39,6 +39,7 @@ export class WompiPaymentGateway implements PaymentGateway {
     'ERROR',
     'VOIDED',
   ]);
+  private readonly logger = new Logger(WompiPaymentGateway.name);
 
   constructor(
     @Inject(PAYMENT_CONFIG_PROVIDER)
@@ -50,6 +51,10 @@ export class WompiPaymentGateway implements PaymentGateway {
   ): Promise<ProcessCardPaymentResult> {
     const apiUrl = this.paymentConfigProvider.getWompiApiUrl();
     const privateKey = this.paymentConfigProvider.getWompiPrivateKey();
+
+    this.logger.log(
+      `Creating Wompi transaction for local transaction ${input.transactionId} and reference ${input.reference}.`,
+    );
 
     const createResponse = await fetch(`${apiUrl}/transactions`, {
       method: 'POST',
@@ -78,12 +83,14 @@ export class WompiPaymentGateway implements PaymentGateway {
       (await createResponse.json()) as WompiTransactionPayload;
 
     if (!createResponse.ok) {
-      throw new PaymentProcessingError(
-        this.extractErrorMessage(
-          createdPayload,
-          `Wompi payment creation failed with status ${createResponse.status}.`,
-        ),
+      const message = this.extractErrorMessage(
+        createdPayload,
+        `Wompi payment creation failed with status ${createResponse.status}.`,
       );
+      this.logger.warn(
+        `Wompi rejected transaction ${input.transactionId} during creation: ${message}`,
+      );
+      throw new PaymentProcessingError(message);
     }
 
     const wompiTransactionId = createdPayload.data?.id;
@@ -93,6 +100,10 @@ export class WompiPaymentGateway implements PaymentGateway {
         'Wompi did not return a transaction id for the processed payment.',
       );
     }
+
+    this.logger.log(
+      `Wompi transaction ${wompiTransactionId} created for local transaction ${input.transactionId}.`,
+    );
 
     const finalTransaction = await this.pollFinalTransactionStatus(
       wompiTransactionId,
@@ -131,12 +142,14 @@ export class WompiPaymentGateway implements PaymentGateway {
       const payload = (await response.json()) as WompiTransactionPayload;
 
       if (!response.ok) {
-        throw new PaymentProcessingError(
-          this.extractErrorMessage(
-            payload,
-            `Wompi transaction lookup failed with status ${response.status}.`,
-          ),
+        const message = this.extractErrorMessage(
+          payload,
+          `Wompi transaction lookup failed with status ${response.status}.`,
         );
+        this.logger.warn(
+          `Wompi lookup failed for transaction ${wompiTransactionId}: ${message}`,
+        );
+        throw new PaymentProcessingError(message);
       }
 
       latestTransaction = payload.data;
@@ -148,6 +161,9 @@ export class WompiPaymentGateway implements PaymentGateway {
       }
 
       if (this.isTerminalStatus(latestTransaction.status)) {
+        this.logger.log(
+          `Wompi transaction ${wompiTransactionId} reached terminal status ${latestTransaction.status}.`,
+        );
         return latestTransaction;
       }
 
@@ -204,24 +220,34 @@ export class WompiPaymentGateway implements PaymentGateway {
   ): string {
     const reason = payload.error?.reason;
 
-    if (reason) {
+    if (typeof reason === 'string' && reason.trim().length > 0) {
       return reason;
     }
 
     const messages = payload.error?.messages;
 
-    if (Array.isArray(messages) && messages.length > 0) {
-      return messages.join(', ');
-    }
+    const flattened = this.flattenMessages(messages);
 
-    if (messages && typeof messages === 'object') {
-      const flattened = Object.values(messages).flat();
-
-      if (flattened.length > 0) {
-        return flattened.join(', ');
-      }
+    if (flattened.length > 0) {
+      return flattened.join(', ');
     }
 
     return fallback;
+  }
+
+  private flattenMessages(value: unknown): string[] {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return [value];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => this.flattenMessages(item));
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.values(value).flatMap((item) => this.flattenMessages(item));
+    }
+
+    return [];
   }
 }

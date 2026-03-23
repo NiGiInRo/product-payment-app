@@ -10,8 +10,10 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBadGatewayResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiOperation,
   ApiOkResponse,
   ApiNotFoundResponse,
   ApiTags,
@@ -40,6 +42,7 @@ export class TransactionsController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a local pending transaction with frozen pricing.' })
   @ApiCreatedResponse({
     description: 'Creates a local pending transaction with frozen pricing.',
     type: CreatePendingTransactionHttpResponse,
@@ -69,6 +72,7 @@ export class TransactionsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get the current status and details of a transaction.' })
   @ApiOkResponse({
     description: 'Returns the transaction status and data for refresh recovery.',
     type: GetTransactionStatusHttpResponse,
@@ -91,8 +95,9 @@ export class TransactionsController {
   }
 
   @Post(':id/process-payment')
+  @ApiOperation({ summary: 'Process a pending transaction payment through the payment provider.' })
   @ApiOkResponse({
-    description: 'Processes a pending transaction with Wompi and returns the final local status.',
+    description: 'Processes a pending transaction with the payment provider and returns the final local status.',
     type: GetTransactionStatusHttpResponse,
   })
   @ApiNotFoundResponse({
@@ -101,6 +106,9 @@ export class TransactionsController {
   @ApiConflictResponse({
     description:
       'The transaction is no longer pending, the product is inactive, or the stock is exhausted.',
+  })
+  @ApiBadGatewayResponse({
+    description: 'The payment provider integration failed or rejected the payment request.',
   })
   @HttpCode(200)
   async processPayment(

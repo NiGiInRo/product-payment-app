@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PRODUCT_REPOSITORY } from '../../../catalog/application/ports/product.repository';
 import type { ProductRepository } from '../../../catalog/application/ports/product.repository';
 import { ProductInactiveError } from '../../../catalog/domain/errors/product-inactive.error';
@@ -21,6 +21,8 @@ import { toTransactionStatusResponse } from '../mappers/transaction-status-respo
 
 @Injectable()
 export class ProcessTransactionPaymentUseCase {
+  private readonly logger = new Logger(ProcessTransactionPaymentUseCase.name);
+
   constructor(
     @Inject(TRANSACTION_REPOSITORY)
     private readonly transactionRepository: TransactionRepository,
@@ -35,6 +37,10 @@ export class ProcessTransactionPaymentUseCase {
   async execute(
     command: ProcessTransactionPaymentCommand,
   ): Promise<GetTransactionStatusResponse> {
+    this.logger.log(
+      `Processing payment for transaction ${command.transactionId}.`,
+    );
+
     const transaction =
       await this.transactionRepository.findDetailsById(command.transactionId);
 
@@ -72,11 +78,19 @@ export class ProcessTransactionPaymentUseCase {
       processedAt: paymentResult.processedAt,
     });
 
+    this.logger.log(
+      `Transaction ${updatedTransaction.id} finished with status ${updatedTransaction.status}.`,
+    );
+
     if (updatedTransaction.status === TransactionStatus.APPROVED) {
       await this.productRepository.save({
         ...transaction.product,
         stock: transaction.product.stock - 1,
       });
+
+      this.logger.log(
+        `Stock decreased for product ${transaction.product.id}. Remaining stock: ${transaction.product.stock - 1}.`,
+      );
     }
 
     return toTransactionStatusResponse({
@@ -111,6 +125,10 @@ export class ProcessTransactionPaymentUseCase {
         error instanceof Error
           ? error.message
           : 'Unexpected payment processing error.';
+
+      this.logger.warn(
+        `Payment processing failed for transaction ${transaction.id}: ${reason}`,
+      );
 
       await this.transactionRepository.save({
         ...transaction,

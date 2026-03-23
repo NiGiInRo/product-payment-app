@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PRODUCT_REPOSITORY } from '../../../catalog/application/ports/product.repository';
 import type { ProductRepository } from '../../../catalog/application/ports/product.repository';
 import { ProductNotFoundError } from '../../../catalog/domain/errors/product-not-found.error';
@@ -21,6 +21,8 @@ import { ProductInactiveError } from '../../../catalog/domain/errors/product-ina
 
 @Injectable()
 export class CreatePendingTransactionUseCase {
+  private readonly logger = new Logger(CreatePendingTransactionUseCase.name);
+
   constructor(
     @Inject(PRODUCT_REPOSITORY)
     private readonly productRepository: ProductRepository,
@@ -37,6 +39,10 @@ export class CreatePendingTransactionUseCase {
   async execute(
     command: CreatePendingTransactionCommand,
   ): Promise<CreatePendingTransactionResponse> {
+    this.logger.log(
+      `Creating pending transaction for product ${command.productId} and customer ${command.customer.email.trim().toLowerCase()}.`,
+    );
+
     const product = await this.productRepository.findById(command.productId);
 
     if (!product) {
@@ -91,6 +97,10 @@ export class CreatePendingTransactionUseCase {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    this.logger.log(
+      `Pending transaction ${transaction.id} created for product ${product.id}.`,
+    );
 
     return {
       transactionId: transaction.id,

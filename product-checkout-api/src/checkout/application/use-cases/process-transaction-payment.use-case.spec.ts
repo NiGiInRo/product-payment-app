@@ -10,6 +10,9 @@ import type { TransactionRepository } from '../ports/transaction.repository';
 import { ProcessTransactionPaymentUseCase } from './process-transaction-payment.use-case';
 import { TransactionStatus } from '../../domain/enums/transaction-status.enum';
 import { TransactionAlreadyProcessedError } from '../../domain/errors/transaction-already-processed.error';
+import { TransactionNotFoundError } from '../../domain/errors/transaction-not-found.error';
+import { ProductInactiveError } from '../../../catalog/domain/errors/product-inactive.error';
+import { OutOfStockError } from '../../domain/errors/out-of-stock.error';
 
 describe('ProcessTransactionPaymentUseCase', () => {
   const baseTransaction = {
@@ -225,6 +228,96 @@ describe('ProcessTransactionPaymentUseCase', () => {
     ).rejects.toBeInstanceOf(TransactionAlreadyProcessedError);
   });
 
+  it('throws TransactionNotFoundError when the transaction does not exist', async () => {
+    const {
+      productRepository,
+      transactionRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    } = buildDependencies();
+    transactionRepository.findDetailsById = jest.fn().mockResolvedValue(null);
+
+    const useCase = new ProcessTransactionPaymentUseCase(
+      transactionRepository,
+      productRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    );
+
+    await expect(
+      useCase.execute({
+        transactionId: 'missing-transaction',
+        paymentMethodToken: 'tok_test_approved',
+        acceptanceToken: 'acceptance-token',
+        customerEmail: 'nicolas@example.com',
+      }),
+    ).rejects.toBeInstanceOf(TransactionNotFoundError);
+  });
+
+  it('throws ProductInactiveError when the product became inactive before processing', async () => {
+    const {
+      productRepository,
+      transactionRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    } = buildDependencies();
+    transactionRepository.findDetailsById = jest.fn().mockResolvedValue({
+      ...structuredClone(baseTransaction),
+      product: {
+        ...structuredClone(baseTransaction.product),
+        active: false,
+      },
+    });
+
+    const useCase = new ProcessTransactionPaymentUseCase(
+      transactionRepository,
+      productRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    );
+
+    await expect(
+      useCase.execute({
+        transactionId: 'transaction-1',
+        paymentMethodToken: 'tok_test_approved',
+        acceptanceToken: 'acceptance-token',
+        customerEmail: 'nicolas@example.com',
+      }),
+    ).rejects.toBeInstanceOf(ProductInactiveError);
+  });
+
+  it('throws OutOfStockError when the product runs out of stock before processing', async () => {
+    const {
+      productRepository,
+      transactionRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    } = buildDependencies();
+    transactionRepository.findDetailsById = jest.fn().mockResolvedValue({
+      ...structuredClone(baseTransaction),
+      product: {
+        ...structuredClone(baseTransaction.product),
+        stock: 0,
+      },
+    });
+
+    const useCase = new ProcessTransactionPaymentUseCase(
+      transactionRepository,
+      productRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    );
+
+    await expect(
+      useCase.execute({
+        transactionId: 'transaction-1',
+        paymentMethodToken: 'tok_test_approved',
+        acceptanceToken: 'acceptance-token',
+        customerEmail: 'nicolas@example.com',
+      }),
+    ).rejects.toBeInstanceOf(OutOfStockError);
+  });
+
   it('marks the transaction as ERROR when the gateway fails technically', async () => {
     const {
       productRepository,
@@ -259,5 +352,40 @@ describe('ProcessTransactionPaymentUseCase', () => {
       }),
     );
     expect(productRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('wraps non-Error gateway failures into PaymentProcessingError', async () => {
+    const {
+      productRepository,
+      transactionRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    } = buildDependencies();
+    paymentGateway.processCardPayment = jest.fn().mockRejectedValue({
+      reason: 'gateway-object',
+    });
+
+    const useCase = new ProcessTransactionPaymentUseCase(
+      transactionRepository,
+      productRepository,
+      paymentGateway,
+      paymentConfigProvider,
+    );
+
+    await expect(
+      useCase.execute({
+        transactionId: 'transaction-1',
+        paymentMethodToken: 'tok_test_error',
+        acceptanceToken: 'acceptance-token',
+        customerEmail: 'nicolas@example.com',
+      }),
+    ).rejects.toBeInstanceOf(PaymentProcessingError);
+
+    expect(transactionRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: TransactionStatus.ERROR,
+        statusReason: 'Unexpected payment processing error.',
+      }),
+    );
   });
 });

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadGatewayResponse,
+  ApiOperation,
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -20,12 +21,13 @@ export class CheckoutController {
   ) {}
 
   @Get('config')
+  @ApiOperation({ summary: 'Get the public checkout configuration and provider legal tokens.' })
   @ApiOkResponse({
     description: 'Returns the checkout configuration required by the frontend.',
     type: CheckoutConfigHttpResponse,
   })
   @ApiBadGatewayResponse({
-    description: 'The checkout configuration could not be retrieved from Wompi.',
+    description: 'The checkout configuration could not be retrieved from the payment provider.',
   })
   async getConfig(): Promise<CheckoutConfigHttpResponse> {
     try {

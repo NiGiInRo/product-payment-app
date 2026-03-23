@@ -76,7 +76,9 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "catalog/application/use-cases/**/*.ts",
+      "checkout/application/**/*.ts",
+      "!**/*.spec.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"

@@ -1,98 +1,157 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Product Checkout API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend for the technical checkout challenge built with `NestJS + TypeScript + Prisma + PostgreSQL`, integrated with a sandbox payment provider environment.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## What it does
 
-## Description
+- exposes the current checkout product
+- returns the public payment configuration required by the frontend
+- creates local `PENDING` transactions
+- processes card payments against the sandbox provider
+- persists the final transaction state
+- decreases stock only for `APPROVED` payments
+- restores the final state after refresh with `GET /transactions/:id`
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture
 
-## Project setup
+The API is organized by modules and layers:
 
-```bash
-$ npm install
+- `src/catalog`
+  - current product and catalog access
+- `src/checkout`
+  - transaction creation, status lookup, and flow orchestration
+- `src/payments`
+  - payment provider integration and payment configuration
+- `src/shared`
+  - shared infrastructure, including Prisma
+
+The backend is split into:
+
+- `controllers`
+- `application/use-cases`
+- `application/ports`
+- `domain`
+- `infrastructure`
+
+## Minimal model
+
+- `Product`
+- `Customer`
+- `Delivery`
+- `Transaction`
+
+Local transaction states:
+
+- `PENDING`
+- `APPROVED`
+- `DECLINED`
+- `ERROR`
+
+## Environment variables
+
+Define these variables in `.env`:
+
+```env
+PORT=3000
+FRONTEND_URL=http://localhost:5173
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/product_checkout
+WOMPI_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+WOMPI_PUBLIC_KEY=pub_stagtest_replace_me
+WOMPI_PRIVATE_KEY=prv_stagtest_replace_me
+WOMPI_INTEGRITY_KEY=stagtest_integrity_replace_me
+BASE_FEE_CENTS=0
+DELIVERY_FEE_CENTS=0
 ```
 
-## Compile and run the project
+For this technical challenge, the sandbox/UAT keys come from the PDF delivered with the exercise.
+
+## Installation
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+npm run prisma:generate
 ```
 
-## Run tests
+## Database
+
+Create and seed the local database:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run prisma:migrate -- --name init
+npm run prisma:seed
 ```
 
-## Deployment
+The seed leaves a single active product ready for the checkout.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Running the backend
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Development mode:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Local production mode:
 
-## Resources
+```bash
+npm run build
+npm run start:prod
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Swagger
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+API documentation is available at:
 
-## Support
+- [http://localhost:3000/docs](http://localhost:3000/docs)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Main endpoints
 
-## Stay in touch
+- `GET /products/current`
+- `GET /checkout/config`
+- `POST /transactions`
+- `POST /transactions/:id/process-payment`
+- `GET /transactions/:id`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Manual test flow
 
-## License
+1. `GET /checkout/config`
+2. `POST /transactions`
+3. tokenize a card with `POST {WOMPI_API_URL}/tokens/cards`
+4. `POST /transactions/:id/process-payment`
+5. `GET /transactions/:id`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Useful sandbox cards:
+
+- `4242 4242 4242 4242` for an approved scenario
+- `4111 1111 1111 1111` for a declined scenario
+
+## Tests
+
+Unit tests:
+
+```bash
+npm test -- --runInBand
+```
+
+E2E tests:
+
+```bash
+npm run test:e2e -- --runInBand
+```
+
+Business-focused coverage:
+
+```bash
+npm run test:cov -- --runInBand
+```
+
+Current useful coverage:
+
+- `100%` statements/lines/functions across use cases and application mappers
+- `94%+` branch coverage in business logic
+
+## Notes
+
+- sensitive card data is never stored, and pricing is always calculated by the backend
+- a transaction outside `PENDING` is never reprocessed
+- the payment flow reaches the sandbox provider, but the current UAT credentials reject the integrity signature, so failed attempts are persisted as `ERROR`
