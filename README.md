@@ -1,28 +1,18 @@
 # Product Checkout App
 
 ## Overview
-This project is a full-stack product checkout application focused on a simple purchase flow for a single in-stock product.
+This repository contains a full-stack checkout application for a single in-stock product.
 
-The goal is to build a mobile-first checkout experience where a customer can:
-- view a product and its available stock
-- enter card and delivery information
-- review a payment summary
-- complete a sandbox payment flow
-- see the final transaction result
-- return to the product page with updated stock
+The app implements a 5-step purchase flow:
+1. Product page
+2. Card and delivery information
+3. Payment summary
+4. Final transaction status
+5. Return to product page with updated stock
 
-The system is designed to cover both the user-facing checkout experience and the backend transaction orchestration behind it.
+The system persists checkout progress across refresh, creates a local `PENDING` transaction before charging, processes the payment through a sandbox payment provider, and updates stock only when the transaction is approved.
 
-## Project Goals
-- Build a responsive single page application for the checkout flow
-- Expose a backend API for products, transactions, customers, and deliveries
-- Persist transaction state so progress can be recovered after refresh
-- Process payments through a sandbox environment
-- Update stock only when a payment is approved
-- Provide test coverage for both frontend and backend
-- Prepare the app for deployment
-
-## Planned Stack
+## Stack
 
 ### Frontend
 - React
@@ -30,7 +20,7 @@ The system is designed to cover both the user-facing checkout experience and the
 - TypeScript
 - Redux Toolkit
 - React Router
-- Mobile-first responsive UI
+- Vitest + Testing Library
 
 ### Backend
 - NestJS
@@ -40,31 +30,134 @@ The system is designed to cover both the user-facing checkout experience and the
 - Swagger
 - Jest
 
-## Core Business Flow
-1. Display the current product with description, price, and available stock.
-2. Let the customer start checkout and enter card and delivery details.
-3. Show a payment summary including product amount and fixed fees.
-4. Create a local pending transaction before processing the payment.
-5. Process the payment through a sandbox provider.
-6. Update the local transaction with the final result.
-7. Decrease stock only if the payment is approved.
-8. Show the final transaction status and return to the product page.
+### Infrastructure
+- AWS S3 for the frontend static site
+- AWS EC2 for the backend API
+- AWS RDS PostgreSQL for the database
+- Terraform for core infrastructure provisioning
 
-## Backend Responsibilities
-- Serve the current product and stock
-- Create pending transactions
-- Store customer and delivery data
-- Process payment requests through a sandbox gateway
-- Persist final transaction status
-- Protect business rules around stock and transaction states
+## Live URLs
+- Frontend: [http://product-paid-app-nicolas-20260324-01.s3-website-us-east-1.amazonaws.com](http://product-paid-app-nicolas-20260324-01.s3-website-us-east-1.amazonaws.com)
+- Backend API: [http://ec2-35-175-216-28.compute-1.amazonaws.com:3000](http://ec2-35-175-216-28.compute-1.amazonaws.com:3000)
+- Swagger: [http://ec2-35-175-216-28.compute-1.amazonaws.com:3000/docs](http://ec2-35-175-216-28.compute-1.amazonaws.com:3000/docs)
 
-## Frontend Responsibilities
-- Present the checkout flow as a SPA
-- Manage multi-step checkout state
-- Persist progress locally
-- Validate customer, delivery, and card input
-- Display success, decline, and error states clearly
+## Business Flow
+1. The frontend loads the current product from the backend.
+2. The customer enters card, customer, and delivery data.
+3. The frontend shows a summary preview.
+4. The frontend requests checkout configuration from the backend.
+5. The frontend tokenizes the card directly against the sandbox payment provider.
+6. The backend creates a local `PENDING` transaction.
+7. The backend processes the payment against the sandbox provider.
+8. The backend updates the local transaction result.
+9. The backend decreases stock only for approved payments.
+10. The frontend restores or displays the final transaction status when needed.
 
-## Status
-Planning phase. 
+## Repository Structure
+- [product-checkout-web](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/product-checkout-web): React SPA
+- [product-checkout-api](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/product-checkout-api): NestJS API
+- [infra/aws](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/infra/aws): Terraform files and AWS deployment notes
+- [sequence-flow.puml](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/sequence-flow.puml): sequence diagram for the checkout flow
 
+## Data Model
+Core entities:
+- `Product`
+- `Customer`
+- `Delivery`
+- `Transaction`
+
+Transaction states:
+- `PENDING`
+- `APPROVED`
+- `DECLINED`
+- `ERROR`
+
+The backend database is seeded with a single active product for the checkout flow.
+
+## Main API Endpoints
+- `GET /products/current`
+- `GET /checkout/config`
+- `POST /transactions`
+- `POST /transactions/:id/process-payment`
+- `GET /transactions/:id`
+
+## Local Setup
+
+### Backend
+See [product-checkout-api/README.md](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/product-checkout-api/README.md).
+
+Main backend environment variables:
+
+```env
+PORT=3000
+FRONTEND_URL=http://localhost:5173
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/product_checkout
+PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+PAYMENT_PROVIDER_PUBLIC_KEY=pub_stagtest_replace_me
+PAYMENT_PROVIDER_PRIVATE_KEY=prv_stagtest_replace_me
+PAYMENT_PROVIDER_INTEGRITY_KEY=stagtest_integrity_replace_me
+BASE_FEE_CENTS=0
+DELIVERY_FEE_CENTS=0
+```
+
+### Frontend
+See [product-checkout-web/README.md](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/product-checkout-web/README.md).
+
+Main frontend environment variables:
+
+```env
+VITE_API_URL=http://localhost:3000
+VITE_PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+```
+
+## Testing
+
+### Backend
+Run:
+
+```bash
+cd product-checkout-api
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npm run test:cov -- --runInBand
+```
+
+Current backend coverage from the generated report:
+- Statements: `100%`
+- Functions: `100%`
+- Branches: `94.44%`
+- Lines: `100%`
+
+### Frontend
+Run:
+
+```bash
+cd product-checkout-web
+npm test
+npm run build
+npm run lint
+```
+
+Current frontend automated suite:
+- `8` test files passing
+- `22` tests passing
+
+## AWS Deployment Notes
+The deployed AWS setup uses:
+- S3 static website hosting for the frontend
+- EC2 for the backend runtime
+- RDS PostgreSQL for the database
+- Terraform for the main infrastructure resources
+
+More details are documented in [infra/aws/README.md](C:/Users/Nicolas/Documents/projects/monorepos/product-paid-app/infra/aws/README.md).
+
+## Security Notes
+- Raw card number, CVC, and expiry are never persisted in frontend state or local storage.
+- The backend never stores raw card data.
+- Pricing and stock are controlled by the backend.
+- Approved transaction persistence and stock decrement are handled atomically in the backend.
+
+## Tradeoffs
+- The AWS deployment is intentionally minimal to keep infrastructure understandable and low-cost.
+- The frontend static site is hosted directly on S3 without CloudFront in the first iteration.
+- Some runtime deployment steps remain operational rather than fully automated.
