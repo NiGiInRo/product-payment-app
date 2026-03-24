@@ -43,7 +43,7 @@ export function CheckoutSummaryStep({
           <p className="muted-label">Pago</p>
           <strong>{getBrandLabel(cardBrand)}</strong>
           <p className="status-copy">Titular: {cardForm.holderName || 'Pendiente'}</p>
-          <p className="status-copy">La tokenizacion ocurre al confirmar el pago.</p>
+          <p className="status-copy">La provider tokenization ocurre al confirmar el pago.</p>
         </div>
 
         <div className="summary-panel">

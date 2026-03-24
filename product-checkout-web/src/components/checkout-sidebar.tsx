@@ -79,7 +79,7 @@ export function CheckoutSidebar({
 
         <div className="meta-notes">
           <p>
-            Configuracion Wompi:{' '}
+            Provider configuration:{' '}
             <strong>
               {payment.configStatus === 'succeeded'
                 ? 'lista'

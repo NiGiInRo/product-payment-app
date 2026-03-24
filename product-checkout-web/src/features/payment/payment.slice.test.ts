@@ -1,4 +1,5 @@
 import paymentReducer, {
+  clearPaymentAttempt,
   clearPaymentError,
   initialPaymentState,
   resetPaymentState,
@@ -94,5 +95,32 @@ describe('payment reducer', () => {
     expect(withError.error).toBe('Network error')
     expect(cleared.error).toBeNull()
     expect(reset).toEqual(initialPaymentState)
+  })
+
+  it('clears a dead transaction attempt without losing checkout config', () => {
+    const withConfig = paymentReducer(
+      initialPaymentState,
+      setCheckoutConfig({
+        publicKey: 'pub_stagtest_x',
+        acceptanceToken: 'acceptance-token',
+        legalLinks: {
+          acceptance: 'https://example.com/acceptance',
+        },
+      }),
+    )
+
+    const withPending = paymentReducer(
+      withConfig,
+      setPaymentPending({
+        transactionId: 'txn-1',
+      }),
+    )
+
+    const clearedAttempt = paymentReducer(withPending, clearPaymentAttempt())
+
+    expect(clearedAttempt.transactionId).toBeNull()
+    expect(clearedAttempt.status).toBe('idle')
+    expect(clearedAttempt.finalResult).toBeNull()
+    expect(clearedAttempt.checkoutConfig?.publicKey).toBe('pub_stagtest_x')
   })
 })

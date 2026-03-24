@@ -1,6 +1,6 @@
 # Product Checkout Web
 
-Frontend application for the Wompi onboarding test. It consumes the local backend from this monorepo, renders the current product, collects checkout data, tokenizes card details directly against Wompi Sandbox, creates a local transaction, and displays the final payment result.
+Frontend application for a payment onboarding test. It consumes the local backend from this monorepo, renders the current product, collects checkout data, tokenizes card details directly against a sandbox payment provider, creates a local transaction, and displays the final payment result.
 
 ## Overview
 
@@ -11,7 +11,7 @@ The application supports the following flow:
 3. Collect card, customer, and delivery data
 4. Show a purchase summary before confirmation
 5. Load checkout configuration from the backend
-6. Tokenize the card against Wompi Sandbox
+6. Tokenize the card against the sandbox payment provider
 7. Create a pending transaction in the backend
 8. Process the payment through the backend
 9. Recover the final transaction state when needed
@@ -41,7 +41,7 @@ VITE_PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
 ```
 
 - `VITE_API_URL`: backend base URL
-- `VITE_PAYMENT_PROVIDER_API_URL`: Wompi Sandbox base URL used for card tokenization
+- `VITE_PAYMENT_PROVIDER_API_URL`: sandbox payment provider base URL used for card tokenization
 
 ## Local Development
 
@@ -87,7 +87,7 @@ The frontend expects the backend to expose:
 
 - Only non-sensitive data is persisted to `localStorage`
 - Raw card number, CVC, and expiry are never persisted
-- Card tokenization happens directly against Wompi Sandbox
+- Card tokenization happens directly against the sandbox payment provider
 - The backend never receives raw card details
 
 ## Testing

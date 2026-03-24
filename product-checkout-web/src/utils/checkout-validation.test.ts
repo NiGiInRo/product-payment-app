@@ -29,7 +29,26 @@ describe('checkout validation', () => {
       validateCheckoutDetails(validCustomer, validDelivery, validCard, {
         termsAccepted: true,
         personalDataAccepted: true,
+      }, {
+        requiresPersonalDataAuthorization: true,
       }),
+    ).toEqual({})
+  })
+
+  it('does not require personal data acceptance when the provider config does not request it', () => {
+    expect(
+      validateCheckoutDetails(
+        validCustomer,
+        validDelivery,
+        validCard,
+        {
+          termsAccepted: true,
+          personalDataAccepted: false,
+        },
+        {
+          requiresPersonalDataAuthorization: false,
+        },
+      ),
     ).toEqual({})
   })
 
@@ -55,6 +74,9 @@ describe('checkout validation', () => {
       {
         termsAccepted: false,
         personalDataAccepted: false,
+      },
+      {
+        requiresPersonalDataAuthorization: true,
       },
     )
 

@@ -77,6 +77,12 @@ const paymentSlice = createSlice({
     setPaymentError(state, action: PayloadAction<string | null>) {
       state.error = action.payload
     },
+    clearPaymentAttempt(state) {
+      state.transactionId = null
+      state.status = 'idle'
+      state.statusReason = null
+      state.finalResult = null
+    },
     clearPaymentError(state) {
       state.error = null
     },
@@ -95,6 +101,7 @@ const paymentSlice = createSlice({
 })
 
 export const {
+  clearPaymentAttempt,
   clearPaymentError,
   resetPaymentState,
   setCheckoutConfig,

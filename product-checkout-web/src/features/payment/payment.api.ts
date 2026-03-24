@@ -15,7 +15,7 @@ const PAYMENT_PROVIDER_API_URL = (
   import.meta.env.VITE_PAYMENT_PROVIDER_API_URL || DEFAULT_PAYMENT_PROVIDER_API_URL
 ).replace(/\/$/, '')
 
-type WompiCardTokenResponse = {
+type ProviderCardTokenResponse = {
   data?: {
     id?: string
     status?: string
@@ -96,7 +96,7 @@ export async function tokenizeCard(
     }),
   })
 
-  const payload = (await response.json()) as WompiCardTokenResponse
+  const payload = (await response.json()) as ProviderCardTokenResponse
 
   if (!response.ok || !payload.data?.id) {
     throw new PaymentTokenizationError(
@@ -111,7 +111,7 @@ export async function tokenizeCard(
 }
 
 function extractTokenizationError(
-  payload: WompiCardTokenResponse,
+  payload: ProviderCardTokenResponse,
   fallback: string,
 ): string {
   const reason = payload.error?.reason

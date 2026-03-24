@@ -35,13 +35,13 @@ export function ProductPage() {
           <h1 className="page-title">Compra un solo producto con un flujo simple y real</h1>
           <p className="page-copy">
             El frontend ya consume el producto real, captura checkout, tokeniza
-            tarjeta en sandbox y recupera el estado final de la compra con el
+            tarjeta en el sandbox provider y recupera el estado final de la compra con el
             backend como fuente de verdad.
           </p>
           <div className="hero-points">
             <span>Producto activo desde API</span>
             <span>Checkout persistente tras refresh</span>
-            <span>Pago real conectado al sandbox</span>
+            <span>Pago real conectado al sandbox provider</span>
           </div>
         </div>
       </section>

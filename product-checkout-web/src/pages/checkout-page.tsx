@@ -33,6 +33,7 @@ import {
   tokenizeCard,
 } from '../features/payment/payment.api'
 import {
+  clearPaymentAttempt,
   clearPaymentError,
   selectCheckoutConfig,
   selectPayment,
@@ -85,6 +86,9 @@ export function CheckoutPage() {
   const payment = useAppSelector(selectPayment)
   const [cardForm, setCardForm] = useState<CardFormValues>(emptyCardForm)
   const [errors, setErrors] = useState<CheckoutValidationErrors>({})
+  const requiresPersonalDataAuthorization = Boolean(
+    checkoutConfig?.personalDataAuthToken || checkoutConfig?.legalLinks.personalDataAuthorization,
+  )
 
   useEffect(() => {
     if (catalogStatus === 'idle') void dispatch(fetchCurrentProduct())
@@ -129,6 +133,15 @@ export function CheckoutPage() {
           dispatch(setPaymentPending({ transactionId }))
           dispatch(setPaymentError('Recuperamos una transaccion pendiente. Reingresa la tarjeta para continuar.'))
           dispatch(setCheckoutStep('details'))
+          return
+        }
+        if (recovered.status === 'ERROR') {
+          dispatch(clearPaymentAttempt())
+          dispatch(
+            setPaymentError(
+              'La transaccion anterior termino con un error tecnico y no se puede reutilizar. Puedes intentar de nuevo.',
+            ),
+          )
           return
         }
         dispatch(setPaymentResult(recovered))
@@ -177,7 +190,9 @@ export function CheckoutPage() {
   }
 
   function validateBeforeSummary() {
-    const nextErrors = validateCheckoutDetails(customer, delivery, cardForm, legalFlags)
+    const nextErrors = validateCheckoutDetails(customer, delivery, cardForm, legalFlags, {
+      requiresPersonalDataAuthorization,
+    })
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
@@ -227,7 +242,39 @@ export function CheckoutPage() {
       dispatch(setPaymentResult(result))
       navigate('/checkout/result')
     } catch (error) {
-      dispatch(setPaymentError(error instanceof Error ? error.message : 'No fue posible procesar el pago.'))
+      const fallbackMessage =
+        error instanceof Error ? error.message : 'No fue posible procesar el pago.'
+
+      if (activeTransactionId) {
+        try {
+          const recovered = await getTransactionStatus(activeTransactionId)
+          syncRecoveredTransaction(dispatch, recovered)
+
+          if (recovered.status === 'PENDING') {
+            dispatch(setPaymentPending({ transactionId: activeTransactionId }))
+            dispatch(setPaymentError(fallbackMessage))
+            return
+          }
+
+          if (recovered.status === 'ERROR') {
+            dispatch(clearPaymentAttempt())
+            dispatch(
+              setPaymentError(
+                'La transaccion anterior termino con un error tecnico y no se puede reutilizar. Puedes intentar de nuevo.',
+              ),
+            )
+            return
+          }
+
+          dispatch(setPaymentResult(recovered))
+          navigate('/checkout/result')
+          return
+        } catch {
+          // Keep the original payment error when the backend state cannot be recovered.
+        }
+      }
+
+      dispatch(setPaymentError(fallbackMessage))
     } finally {
       dispatch(setPaymentSubmissionStage('idle'))
     }
@@ -238,9 +285,9 @@ export function CheckoutPage() {
       <section className="hero-panel checkout-hero">
         <div className="hero-copy">
           <span className="eyebrow">Slice 3 en flujo real</span>
-          <h1 className="page-title">Tokenizacion sandbox y procesamiento real de la transaccion</h1>
+          <h1 className="page-title">Provider tokenization y procesamiento real de la transaccion</h1>
           <p className="page-copy">
-            Este slice ya crea la transaccion local, tokeniza la tarjeta contra Wompi Sandbox y procesa el pago usando el backend como fuente de verdad.
+            Este flujo crea la transaccion local, tokeniza la tarjeta contra el sandbox provider y procesa el pago usando el backend como fuente de verdad.
           </p>
         </div>
       </section>
@@ -306,6 +353,7 @@ export function CheckoutPage() {
                 delivery={delivery}
                 errors={errors}
                 legalFlags={legalFlags}
+                requiresPersonalDataAuthorization={requiresPersonalDataAuthorization}
                 onCardChange={handleCardChange}
                 onCustomerChange={handleCustomerChange}
                 onDeliveryChange={handleDeliveryChange}

@@ -33,8 +33,13 @@ export function validateCheckoutDetails(
     termsAccepted: boolean
     personalDataAccepted: boolean
   },
+  options?: {
+    requiresPersonalDataAuthorization?: boolean
+  },
 ) {
   const errors: CheckoutValidationErrors = {}
+  const requiresPersonalDataAuthorization =
+    options?.requiresPersonalDataAuthorization ?? true
 
   if (customer.fullName.trim().length < 3) {
     errors.fullName = 'Ingresa un nombre completo valido.'
@@ -82,7 +87,7 @@ export function validateCheckoutDetails(
     errors.termsAccepted = 'Debes aceptar los terminos para continuar.'
   }
 
-  if (!acceptances.personalDataAccepted) {
+  if (requiresPersonalDataAuthorization && !acceptances.personalDataAccepted) {
     errors.personalDataAccepted = 'Debes autorizar el tratamiento de datos.'
   }
 

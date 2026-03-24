@@ -16,6 +16,7 @@ type CheckoutDetailsStepProps = {
   delivery: CheckoutDelivery
   errors: CheckoutValidationErrors
   legalFlags: LegalAcceptanceFlags
+  requiresPersonalDataAuthorization: boolean
   onCardChange: (field: keyof CardFormValues, value: string) => void
   onCustomerChange: (field: keyof CheckoutCustomer, value: string) => void
   onDeliveryChange: (field: keyof CheckoutDelivery, value: string) => void
@@ -30,6 +31,7 @@ export function CheckoutDetailsStep({
   delivery,
   errors,
   legalFlags,
+  requiresPersonalDataAuthorization,
   onCardChange,
   onCustomerChange,
   onDeliveryChange,
@@ -82,7 +84,7 @@ export function CheckoutDetailsStep({
             />
             <div className="field-meta">
               <span>{getBrandLabel(cardBrand)}</span>
-              <span>Se tokeniza contra Wompi Sandbox</span>
+              <span>Se tokeniza contra el sandbox provider</span>
             </div>
             {errors.cardNumber ? <span className="field-error">{errors.cardNumber}</span> : null}
           </label>
@@ -262,7 +264,7 @@ export function CheckoutDetailsStep({
               type="checkbox"
             />
             <span>
-              Acepto los terminos de Wompi.{' '}
+              Acepto los terminos del payment provider.{' '}
               {checkoutConfig?.legalLinks.acceptance ? (
                 <a
                   className="inline-link"
@@ -277,28 +279,34 @@ export function CheckoutDetailsStep({
           </label>
           {errors.termsAccepted ? <span className="field-error">{errors.termsAccepted}</span> : null}
 
-          <label className="checkbox-field">
-            <input
-              checked={legalFlags.personalDataAccepted}
-              onChange={(event) => onLegalFlagChange('personalDataAccepted', event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              Autorizo el tratamiento de datos.{' '}
-              {checkoutConfig?.legalLinks.personalDataAuthorization ? (
-                <a
-                  className="inline-link"
-                  href={checkoutConfig.legalLinks.personalDataAuthorization}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Ver autorizacion
-                </a>
+          {requiresPersonalDataAuthorization ? (
+            <>
+              <label className="checkbox-field">
+                <input
+                  checked={legalFlags.personalDataAccepted}
+                  onChange={(event) =>
+                    onLegalFlagChange('personalDataAccepted', event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                <span>
+                  Autorizo el tratamiento de datos.{' '}
+                  {checkoutConfig?.legalLinks.personalDataAuthorization ? (
+                    <a
+                      className="inline-link"
+                      href={checkoutConfig.legalLinks.personalDataAuthorization}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Ver autorizacion
+                    </a>
+                  ) : null}
+                </span>
+              </label>
+              {errors.personalDataAccepted ? (
+                <span className="field-error">{errors.personalDataAccepted}</span>
               ) : null}
-            </span>
-          </label>
-          {errors.personalDataAccepted ? (
-            <span className="field-error">{errors.personalDataAccepted}</span>
+            </>
           ) : null}
         </div>
       </section>
