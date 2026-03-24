@@ -1,0 +1,11 @@
+# Terraform local artifacts
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

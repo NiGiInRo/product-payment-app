@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  ERROR
+}
+
+model Product {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  description  String
+  priceCents   Int
+  stock        Int
+  imageUrl     String
+  active       Boolean       @default(true)
+  transactions Transaction[]
+}
+
+model Customer {
+  id           String        @id @default(uuid()) @db.Uuid
+  fullName     String
+  email        String
+  phone        String
+  transactions Transaction[]
+}
+
+model Delivery {
+  id           String        @id @default(uuid()) @db.Uuid
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  region       String?
+  postalCode   String?
+  country      String
+  notes        String?
+  transactions Transaction[]
+}
+
+model Transaction {
+  id                 String            @id @default(uuid()) @db.Uuid
+  status             TransactionStatus @default(PENDING)
+  productId          String            @db.Uuid
+  customerId         String            @db.Uuid
+  deliveryId         String            @db.Uuid
+  amountCents        Int
+  baseFeeCents       Int
+  deliveryFeeCents   Int
+  totalCents         Int
+  currency           String            @default("COP")
+  providerTransactionId String?        @map("wompiTransactionId")
+  statusReason       String?
+  processedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  product            Product           @relation(fields: [productId], references: [id])
+  customer           Customer          @relation(fields: [customerId], references: [id])
+  delivery           Delivery          @relation(fields: [deliveryId], references: [id])
+
+  @@index([productId])
+  @@index([customerId])
+  @@index([deliveryId])
+  @@index([status])
+}
