@@ -103,3 +103,27 @@ variable "db_port" {
   type        = number
   default     = 5432
 }
+
+variable "db_allocated_storage" {
+  description = "Storage inicial en GiB para la instancia RDS."
+  type        = number
+  default     = 20
+}
+
+variable "db_backup_retention_period" {
+  description = "Dias de retencion de backups automaticos para RDS."
+  type        = number
+  default     = 1
+}
+
+variable "db_multi_az" {
+  description = "Mantener desactivado para esta primera version de bajo costo."
+  type        = bool
+  default     = false
+}
+
+variable "db_publicly_accessible" {
+  description = "La base de datos debe permanecer privada."
+  type        = bool
+  default     = false
+}

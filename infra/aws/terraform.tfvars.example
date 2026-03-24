@@ -24,3 +24,7 @@ db_name     = "product_paid_app"
 db_username = "app_user"
 db_password = "replace-with-a-secure-password"
 db_port     = 5432
+db_allocated_storage       = 20
+db_backup_retention_period = 1
+db_multi_az                = false
+db_publicly_accessible     = false
