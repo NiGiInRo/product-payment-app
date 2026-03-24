@@ -96,7 +96,7 @@ output "db_connection_info" {
 
 output "database_url_template" {
   description = "Template seguro para armar DATABASE_URL manualmente."
-  value       = "postgresql://${var.db_username}:<db_password>@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${var.db_name}?schema=public"
+  value       = "postgresql://${var.db_username}:<db_password>@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${var.db_name}?schema=public&sslmode=require&uselibpqcompat=true"
 }
 
 output "planned_ec2_instance_type" {

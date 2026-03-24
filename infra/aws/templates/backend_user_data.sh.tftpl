@@ -32,7 +32,7 @@ SERVICE
 cat > ${backend_app_dir}/.env.example.aws <<ENVFILE
 PORT=${backend_port}
 FRONTEND_URL=http://localhost:5173
-DATABASE_URL=postgresql://app_user:<db_password>@<rds-endpoint>:5432/product_paid_app?schema=public
+DATABASE_URL=postgresql://app_user:<db_password>@<rds-endpoint>:5432/product_paid_app?schema=public&sslmode=require&uselibpqcompat=true
 PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
 PAYMENT_PROVIDER_PUBLIC_KEY=replace-me
 PAYMENT_PROVIDER_PRIVATE_KEY=replace-me
