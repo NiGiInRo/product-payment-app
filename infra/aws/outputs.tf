@@ -113,3 +113,18 @@ output "planned_s3_bucket_name" {
   description = "Bucket previsto para el frontend estatico."
   value       = var.s3_bucket_name
 }
+
+output "frontend_bucket_name" {
+  description = "Bucket S3 del frontend."
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_website_endpoint" {
+  description = "Endpoint website de S3 para el frontend."
+  value       = aws_s3_bucket_website_configuration.frontend.website_endpoint
+}
+
+output "frontend_website_url" {
+  description = "URL publica temporal del frontend en S3 website hosting."
+  value       = "http://${aws_s3_bucket_website_configuration.frontend.website_endpoint}"
+}

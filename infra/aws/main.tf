@@ -30,6 +30,24 @@ data "aws_ssm_parameter" "amazon_linux_2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
+data "aws_iam_policy_document" "frontend_public_read" {
+  statement {
+    sid    = "AllowPublicRead"
+    effect = "Allow"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions = ["s3:GetObject"]
+
+    resources = [
+      "${aws_s3_bucket.frontend.arn}/*",
+    ]
+  }
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -220,4 +238,50 @@ resource "aws_instance" "backend" {
   tags = {
     Name = local.resource_names.backend
   }
+}
+
+resource "aws_s3_bucket" "frontend" {
+  bucket = var.s3_bucket_name
+
+  tags = {
+    Name = local.resource_names.frontend
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
+  }
+}
+
+resource "aws_s3_bucket_policy" "frontend_public_read" {
+  bucket = aws_s3_bucket.frontend.id
+  policy = data.aws_iam_policy_document.frontend_public_read.json
+
+  depends_on = [
+    aws_s3_bucket_public_access_block.frontend,
+  ]
 }
