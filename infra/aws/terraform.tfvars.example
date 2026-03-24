@@ -1,6 +1,11 @@
 aws_region         = "us-east-1"
 name_prefix        = "product-paid-app"
 vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+private_subnet_cidrs = [
+  "10.0.11.0/24",
+  "10.0.12.0/24",
+]
 ec2_instance_type  = "t3.micro"
 rds_instance_class = "db.t3.micro"
 
@@ -10,7 +15,12 @@ s3_bucket_name = "product-paid-app-yourname-dev-123456"
 # Ajusta esto a tu key pair real y a tu IP publica antes del Slice 3.
 ec2_key_pair_name = "replace-with-your-keypair"
 allowed_ssh_cidr  = "203.0.113.10/32"
+backend_port      = 3000
+backend_ingress_cidrs = [
+  "0.0.0.0/0",
+]
 
 db_name     = "product_paid_app"
 db_username = "app_user"
 db_password = "replace-with-a-secure-password"
+db_port     = 5432

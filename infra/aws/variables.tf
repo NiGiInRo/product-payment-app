@@ -16,6 +16,23 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "public_subnet_cidr" {
+  description = "CIDR de la subnet publica donde vivira la EC2."
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "private_subnet_cidrs" {
+  description = "CIDRs de las subnets privadas reservadas para la futura base de datos."
+  type        = list(string)
+  default     = ["10.0.11.0/24", "10.0.12.0/24"]
+
+  validation {
+    condition     = length(var.private_subnet_cidrs) >= 2
+    error_message = "Define al menos dos subnets privadas para preparar RDS en dos zonas de disponibilidad."
+  }
+}
+
 variable "ec2_instance_type" {
   description = "Tipo de instancia minimo previsto para el backend en EC2."
   type        = string
@@ -49,6 +66,18 @@ variable "allowed_ssh_cidr" {
   nullable    = true
 }
 
+variable "backend_port" {
+  description = "Puerto expuesto por el backend NestJS en la EC2."
+  type        = number
+  default     = 3000
+}
+
+variable "backend_ingress_cidrs" {
+  description = "CIDRs autorizados para llegar al backend desde internet."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "db_name" {
   description = "Nombre logico inicial de la base de datos PostgreSQL."
   type        = string
@@ -67,4 +96,10 @@ variable "db_password" {
   sensitive   = true
   default     = null
   nullable    = true
+}
+
+variable "db_port" {
+  description = "Puerto esperado para PostgreSQL en RDS."
+  type        = number
+  default     = 5432
 }
