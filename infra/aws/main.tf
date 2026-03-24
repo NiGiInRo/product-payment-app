@@ -1,4 +1,7 @@
 locals {
+  backend_app_root = "/opt/product-paid-app"
+  backend_app_dir  = "/opt/product-paid-app/product-checkout-api"
+
   resource_names = {
     backend  = "${var.name_prefix}-backend"
     database = "${var.name_prefix}-db"
@@ -21,6 +24,10 @@ locals {
 
 data "aws_availability_zones" "available" {
   state = "available"
+}
+
+data "aws_ssm_parameter" "amazon_linux_2023_ami" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
 resource "aws_vpc" "main" {
@@ -182,5 +189,35 @@ resource "aws_db_instance" "main" {
 
   tags = {
     Name = local.resource_names.database
+  }
+}
+
+resource "aws_instance" "backend" {
+  ami                         = data.aws_ssm_parameter.amazon_linux_2023_ami.value
+  instance_type               = var.ec2_instance_type
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.backend.id]
+  key_name                    = var.ec2_key_pair_name
+  associate_public_ip_address = true
+  user_data_replace_on_change = true
+
+  user_data = templatefile("${path.module}/templates/backend_user_data.sh.tftpl", {
+    backend_app_root     = local.backend_app_root
+    backend_app_dir      = local.backend_app_dir
+    backend_port         = var.backend_port
+    node_major_version   = var.backend_node_major_version
+    systemd_service_name = var.backend_systemd_service_name
+    deploy_script_path   = "/usr/local/bin/deploy-product-checkout-api"
+    runtime_user         = "ec2-user"
+  })
+
+  root_block_device {
+    volume_size           = var.ec2_root_volume_size
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = local.resource_names.backend
   }
 }

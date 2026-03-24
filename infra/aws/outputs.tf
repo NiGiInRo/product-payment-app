@@ -33,6 +33,31 @@ output "backend_security_group_id" {
   value       = aws_security_group.backend.id
 }
 
+output "backend_instance_id" {
+  description = "ID de la instancia EC2 del backend."
+  value       = aws_instance.backend.id
+}
+
+output "backend_public_ip" {
+  description = "IP publica de la EC2 del backend."
+  value       = aws_instance.backend.public_ip
+}
+
+output "backend_public_dns" {
+  description = "DNS publico asignado a la EC2 del backend."
+  value       = aws_instance.backend.public_dns
+}
+
+output "backend_base_url" {
+  description = "URL base temporal del backend mientras no exista dominio."
+  value       = "http://${aws_instance.backend.public_dns}:${var.backend_port}"
+}
+
+output "backend_ssh_command" {
+  description = "Comando base para entrar por SSH a la EC2."
+  value       = "ssh -i <path-to-key.pem> ec2-user@${aws_instance.backend.public_dns}"
+}
+
 output "database_security_group_id" {
   description = "Security group de la base de datos."
   value       = aws_security_group.database.id

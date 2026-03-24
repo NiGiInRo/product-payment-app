@@ -1,0 +1,77 @@
+#!/bin/bash
+set -euxo pipefail
+
+dnf update -y
+dnf install -y git
+
+curl -fsSL "https://rpm.nodesource.com/setup_${node_major_version}.x" | bash -
+dnf install -y nodejs
+
+mkdir -p "${backend_app_root}"
+mkdir -p "${backend_app_dir}"
+chown -R ${runtime_user}:${runtime_user} "${backend_app_root}"
+
+cat > /etc/systemd/system/${systemd_service_name}.service <<SERVICE
+[Unit]
+Description=Product Checkout API
+After=network.target
+
+[Service]
+Type=simple
+User=${runtime_user}
+WorkingDirectory=${backend_app_dir}
+EnvironmentFile=${backend_app_dir}/.env
+ExecStart=/usr/bin/node ${backend_app_dir}/dist/src/main.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+cat > ${backend_app_dir}/.env.example.aws <<ENVFILE
+PORT=${backend_port}
+FRONTEND_URL=http://localhost:5173
+DATABASE_URL=postgresql://app_user:<db_password>@<rds-endpoint>:5432/product_paid_app?schema=public
+PAYMENT_PROVIDER_API_URL=https://api-sandbox.co.uat.wompi.dev/v1
+PAYMENT_PROVIDER_PUBLIC_KEY=replace-me
+PAYMENT_PROVIDER_PRIVATE_KEY=replace-me
+PAYMENT_PROVIDER_INTEGRITY_KEY=replace-me
+BASE_FEE_CENTS=0
+DELIVERY_FEE_CENTS=0
+ENVFILE
+
+cat > ${deploy_script_path} <<SCRIPT
+#!/bin/bash
+set -euxo pipefail
+
+APP_DIR="${backend_app_dir}"
+SERVICE_NAME="${systemd_service_name}"
+
+if [ ! -f "$${APP_DIR}/package.json" ]; then
+  echo "No package.json found in $${APP_DIR}. Copy or clone the backend code first."
+  exit 1
+fi
+
+if [ ! -f "$${APP_DIR}/.env" ]; then
+  echo "No .env found in $${APP_DIR}. Create it before deploying."
+  exit 1
+fi
+
+chown -R ${runtime_user}:${runtime_user} "${backend_app_root}"
+
+su - ${runtime_user} -c "cd $${APP_DIR} && npm ci"
+su - ${runtime_user} -c "cd $${APP_DIR} && npm run prisma:generate"
+su - ${runtime_user} -c "cd $${APP_DIR} && npm run build"
+su - ${runtime_user} -c "cd $${APP_DIR} && npx prisma migrate deploy"
+su - ${runtime_user} -c "cd $${APP_DIR} && npm run prisma:seed"
+
+systemctl daemon-reload
+systemctl enable ${systemd_service_name}
+systemctl restart ${systemd_service_name}
+systemctl status ${systemd_service_name} --no-pager
+SCRIPT
+
+chmod 0644 /etc/systemd/system/${systemd_service_name}.service
+chmod 0755 ${deploy_script_path}
+systemctl daemon-reload

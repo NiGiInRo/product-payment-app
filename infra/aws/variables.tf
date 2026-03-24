@@ -39,6 +39,12 @@ variable "ec2_instance_type" {
   default     = "t3.micro"
 }
 
+variable "ec2_root_volume_size" {
+  description = "Tamano en GiB del disco raiz de la EC2."
+  type        = number
+  default     = 30
+}
+
 variable "rds_instance_class" {
   description = "Clase minima prevista para PostgreSQL en RDS."
   type        = string
@@ -76,6 +82,18 @@ variable "backend_ingress_cidrs" {
   description = "CIDRs autorizados para llegar al backend desde internet."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+variable "backend_node_major_version" {
+  description = "Version major de Node.js a instalar en la EC2."
+  type        = number
+  default     = 22
+}
+
+variable "backend_systemd_service_name" {
+  description = "Nombre del servicio systemd del backend."
+  type        = string
+  default     = "product-checkout-api"
 }
 
 variable "db_name" {
