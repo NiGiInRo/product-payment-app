@@ -74,6 +74,3 @@ aws s3 sync .\dist\ s3://product-paid-app-nicolas-20260324-01 --delete
 - the backend uses the RDS endpoint through `DATABASE_URL`
 - `FRONTEND_URL` must match the S3 website URL for CORS
 
-## Known Limitation
-
-The deployed flow reaches the sandbox payment provider, but with the current credentials the final result may still end in `ERROR` because of the integrity signature. This is an application/provider configuration issue, not an AWS infrastructure issue.

@@ -94,7 +94,7 @@ describe('ProcessTransactionPaymentUseCase', () => {
         getPublicKey: jest.fn(),
         getPrivateKey: jest.fn(),
         getIntegrityKey: jest.fn().mockReturnValue(
-          'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp3',
+          'stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp',
         ),
       },
     };
@@ -119,7 +119,7 @@ describe('ProcessTransactionPaymentUseCase', () => {
 
     const expectedSignature = createHash('sha256')
       .update(
-        'txn_transaction-112990000COPstagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp3',
+        'txn_transaction-112990000COPstagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp',
       )
       .digest('hex');
 

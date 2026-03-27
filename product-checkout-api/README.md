@@ -154,4 +154,3 @@ Current useful coverage:
 
 - sensitive card data is never stored, and pricing is always calculated by the backend
 - a transaction outside `PENDING` is never reprocessed
-- the payment flow reaches the sandbox provider, but the current UAT credentials reject the integrity signature, so failed attempts are persisted as `ERROR`
