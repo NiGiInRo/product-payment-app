@@ -107,6 +107,3 @@ Run:
 npm run test
 ```
 
-## Known Limitation
-
-The frontend is ready to drive the full payment flow, but a successful `APPROVED` end-to-end result still depends on fixing the integrity signature on the backend. With the current backend state, the flow may end in `ERROR` with the message `La firma es invalida`.
